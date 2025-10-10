@@ -67,6 +67,7 @@ Below is the current Gantt chart tracking project tasks and deliverables.
 **Full Interactive Link:**  
 [View Gantt Chart on Smartsheet](https://app.smartsheet.com/workspaces/xjW6VfRv7vPXr3MXqJJjMcqvxhPC87H6CMpxWxX1)  
 
+[View Dashboard](https://app.smartsheet.com/dashboards/4g6rHh947XpchhwCVhfPmQhgjvF67qCmmRcffqq1)
 
 ---
 
