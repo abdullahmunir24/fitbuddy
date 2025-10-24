@@ -49,7 +49,7 @@ With FitBuddy, gym members, trainers, and owners can log workouts, schedule and 
 
 
 ### **Database**
-- MongoDB
+- PostgreSQL
 
 ### **Tools & Integrations**
 - GitHub for version control  
