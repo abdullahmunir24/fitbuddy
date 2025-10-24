@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend API for FitBuddy fitness app",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js"
