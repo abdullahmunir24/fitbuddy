@@ -25,6 +25,10 @@ import 'dotenv/config'; // Load environment variables from .env file
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import workoutRoutes from './routes/workoutRoutes.js';
+import exerciseRoutes from './routes/exerciseRoutes.js';
+import sessionRoutes from './routes/sessionRoutes.js';
 
 /**
  * =====================================
@@ -146,19 +150,58 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 
 /**
- * TODO: Add more route modules here as the app grows
+ * User Profile routes
+ * All user profile management endpoints under /api/users
  * 
- * Examples:
- * import userRoutes from './routes/userRoutes.js';
- * import workoutRoutes from './routes/workoutRoutes.js';
- * import classRoutes from './routes/classRoutes.js';
- * import gymRoutes from './routes/gymRoutes.js';
- * 
- * app.use('/api/users', userRoutes);
- * app.use('/api/workouts', workoutRoutes);
- * app.use('/api/classes', classRoutes);
- * app.use('/api/gyms', gymRoutes);
+ * Available endpoints:
+ * - GET /api/users/:id - Get user profile (protected)
+ * - PUT /api/users/:id - Update user profile (protected)
+ * - DELETE /api/users/:id - Delete user account (protected)
+ * - GET /api/users/:id/stats - Get user statistics (protected)
  */
+app.use('/api/users', userRoutes);
+
+/**
+ * Workout routes
+ * All workout management endpoints under /api/workouts
+ * 
+ * Available endpoints:
+ * - POST /api/workouts - Create new workout (protected)
+ * - GET /api/workouts - Get all workouts with pagination (protected)
+ * - GET /api/workouts/:id - Get specific workout (protected)
+ * - PUT /api/workouts/:id - Update workout (protected)
+ * - DELETE /api/workouts/:id - Delete workout (protected)
+ * - GET /api/users/:userId/workouts - Get user's workouts (protected)
+ */
+app.use('/api/workouts', workoutRoutes);
+
+/**
+ * Exercise routes
+ * All exercise management endpoints under /api/exercises
+ * 
+ * Available endpoints:
+ * - GET /api/exercises - Get all exercises (public)
+ * - GET /api/exercises/:id - Get exercise by ID (public)
+ * - POST /api/exercises - Create new exercise (protected, admin only)
+ * - PUT /api/exercises/:id - Update exercise (protected, admin only)
+ * - DELETE /api/exercises/:id - Delete exercise (protected, admin only)
+ */
+app.use('/api/exercises', exerciseRoutes);
+
+/**
+ * Workout Session/Log routes
+ * All workout session and logging endpoints under /api/sessions
+ * 
+ * Available endpoints:
+ * - POST /api/sessions - Create new session (protected)
+ * - GET /api/sessions - Get all sessions with pagination (protected)
+ * - GET /api/sessions/:id - Get specific session (protected)
+ * - PUT /api/sessions/:id - Update session (protected)
+ * - DELETE /api/sessions/:id - Delete session (protected)
+ * - GET /api/users/:userId/sessions - Get user's sessions (protected)
+ * - GET /api/sessions/stats/:userId - Get user session statistics (protected)
+ */
+app.use('/api/sessions', sessionRoutes);
 
 /**
  * =====================================
