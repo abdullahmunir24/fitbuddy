@@ -135,6 +135,54 @@ export const getAllUsers = () => {
 };
 
 /**
+ * Update user information
+ * 
+ * @param {number|string} userId - The user ID to update
+ * @param {Object} updates - Fields to update
+ * @returns {Object|null} Updated user object or null if not found
+ * 
+ * @example
+ * const updated = updateUser(1, { name: 'Jane Doe', bio: 'Fitness lover' });
+ * 
+ * TODO: Replace with PostgreSQL UPDATE query
+ * const result = await pool.query(
+ *   'UPDATE users SET ... WHERE id = $1 RETURNING *',
+ *   [...]
+ * );
+ * return result.rows[0];
+ */
+export const updateUser = (userId, updates) => {
+  const user = users.find(u => u.id === Number(userId));
+  if (!user) return null;
+  
+  Object.assign(user, updates, { updatedAt: new Date().toISOString() });
+  return user;
+};
+
+/**
+ * Delete a user from the data store
+ * 
+ * @param {number|string} userId - The user ID to delete
+ * @returns {boolean} True if deleted, false if not found
+ * 
+ * @example
+ * const deleted = deleteUser(1);
+ * if (deleted) {
+ *   console.log('User deleted successfully');
+ * }
+ * 
+ * TODO: Replace with PostgreSQL DELETE query
+ * const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+ * return result.rowCount > 0;
+ */
+export const deleteUser = (userId) => {
+  const index = users.findIndex(u => u.id === Number(userId));
+  if (index === -1) return false;
+  users.splice(index, 1);
+  return true;
+};
+
+/**
  * Clear all users from the data store
  * Used for testing purposes only
  * 
