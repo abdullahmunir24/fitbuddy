@@ -264,27 +264,24 @@ app.use((error, req, res, next) => {
 
 /**
  * Start the Express server
- * Only start if this file is run directly (not imported)
  */
-if (import.meta.url === `file://${process.argv[1]}`) {
-  app.listen(PORT, () => {
-    console.log('\n========================================');
-    console.log('🚀 FitBuddy API Server Started');
-    console.log('========================================');
-    console.log(`📡 Server running on: http://localhost:${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 Frontend URL: ${FRONTEND_URL}`);
-    console.log(`⏰ Started at: ${new Date().toISOString()}`);
-    console.log('========================================\n');
-    console.log('📚 Available endpoints:');
-    console.log(`   GET    http://localhost:${PORT}/`);
-    console.log(`   GET    http://localhost:${PORT}/health`);
-    console.log(`   POST   http://localhost:${PORT}/api/auth/signup`);
-    console.log(`   POST   http://localhost:${PORT}/api/auth/login`);
-    console.log(`   GET    http://localhost:${PORT}/api/auth/me`);
-    console.log('\n========================================\n');
-  });
-}
+app.listen(PORT, () => {
+  console.log('\n========================================');
+  console.log('FitBuddy API Server Started');
+  console.log('========================================');
+  console.log(`Server running on: http://localhost:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Frontend URL: ${FRONTEND_URL}`);
+  console.log(`Started at: ${new Date().toISOString()}`);
+  console.log('========================================\n');
+  console.log('Available endpoints:');
+  console.log(`   GET    http://localhost:${PORT}/`);
+  console.log(`   GET    http://localhost:${PORT}/health`);
+  console.log(`   POST   http://localhost:${PORT}/api/auth/signup`);
+  console.log(`   POST   http://localhost:${PORT}/api/auth/login`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/me`);
+  console.log('\n========================================\n');
+});
 
 /**
  * Export app for testing purposes

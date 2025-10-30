@@ -61,31 +61,35 @@ const Login = () => {
     if (!validateForm()) return;
 
     setLoading(true);
+    setErrors({});
 
     try {
-      // TODO: Replace with actual API call
-      // Mock API call for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
-      
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   localStorage.setItem('token', data.token);
-      //   navigate('/dashboard');
-      // }
+      // Make actual API call to backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
 
-      console.log('Login data:', formData);
-      // Simulate successful login
-      alert('Login successful! (Mock)');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Success - store token and user
+      localStorage.setItem('token', data.data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+
+      console.log('Login successful:', data.data.user);
+      alert('Welcome back!');
+      
+      // Navigate to dashboard
+      navigate('/dashboard');
       
     } catch (error) {
-      setErrors({ general: 'Login failed. Please try again.' });
       console.error('Login error:', error);
+      setErrors({ general: error.message || 'Login failed. Please try again.' });
     } finally {
       setLoading(false);
     }

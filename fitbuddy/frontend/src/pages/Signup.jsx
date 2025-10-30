@@ -92,42 +92,40 @@ const Signup = () => {
     if (!validateForm()) return;
 
     setLoading(true);
+    setErrors({});
 
     try {
-      // TODO: Replace with actual API call
-      // Mock API call for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // const response = await fetch('/api/auth/signup', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     fullName: formData.fullName,
-      //     email: formData.email,
-      //     password: formData.password,
-      //     role: formData.role
-      //   })
-      // });
-      
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   localStorage.setItem('token', data.token);
-      //   navigate('/dashboard');
-      // }
-
-      console.log('Signup data:', {
-        fullName: formData.fullName,
-        email: formData.email,
-        role: formData.role
+      // Make actual API call to backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role
+        })
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Signup failed');
+      }
+
+      // Success - store token and user
+      localStorage.setItem('token', data.data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+
+      console.log('Signup successful:', data.data.user);
+      alert('Account created successfully!');
       
-      // Simulate successful signup
-      alert('Account created successfully! (Mock)');
-      navigate('/login');
+      // Redirect to dashboard
+      navigate('/dashboard');
       
     } catch (error) {
-      setErrors({ general: 'Registration failed. Please try again.' });
       console.error('Signup error:', error);
+      setErrors({ general: error.message || 'Registration failed. Please try again.' });
     } finally {
       setLoading(false);
     }

@@ -2,100 +2,120 @@
 
 A modern full-stack web application for fitness tracking and management.
 
+## Status: FULLY INTEGRATED AND WORKING
+
+The frontend and backend are now fully connected! You can create accounts, login, and access the dashboard.
+
 ## Tech Stack
 
 - **Frontend**: React.js with Vite, React Router, Tailwind CSS
 - **Backend**: Node.js with Express.js, JWT authentication
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (optional - currently using in-memory mock data)
 
 ## Project Structure
 
 ```
 fitbuddy/
-├── frontend/          # React frontend application
-├── backend/           # Express.js API server
+├── frontend/          # React frontend application (CONNECTED)
+├── backend/           # Express.js API server (WORKING)
 ├── database/          # PostgreSQL schema and migrations
 ├── docker-compose.yml # Docker setup for PostgreSQL
+├── SETUP_AND_TEST_GUIDE.md  # Detailed setup and testing guide
 └── README.md
 ```
 
-## Getting Started
+## Quick Start (In-Memory Mode - No Database Required)
 
 ### Prerequisites
 
 - Node.js (v18 or higher)
 - npm or yarn
-- Docker (optional, for PostgreSQL)
 
-### 1. Clone and Navigate
+### 1. Start Backend Server
 
-```bash
-cd fitbuddy
-```
-
-### 2. Set Up Database
-
-**Option A: Using Docker (Recommended)**
+Open a terminal:
 
 ```bash
-docker-compose up -d
-```
-
-**Option B: Local PostgreSQL**
-
-Install PostgreSQL locally and create a database named `fitbuddy_db`.
-
-Then run the schema:
-
-```bash
-cd database
-psql -h localhost -U fitbuddy_user -d fitbuddy_db -f schema.sql
-cd ..
-```
-
-### 3. Set Up Backend
-
-```bash
-cd backend
+cd fitbuddy/backend
 npm install
-cp src/config/.env.example .env
-# Edit .env with your database credentials if needed
 npm run dev
 ```
 
-The backend will run on **http://localhost:4000**
+The backend will run on **http://localhost:5000**
 
-### 4. Set Up Frontend
+KEEP THIS TERMINAL RUNNING!
 
-Open a new terminal:
+### 2. Start Frontend Server
+
+Open a NEW terminal:
 
 ```bash
-cd frontend
+cd fitbuddy/frontend
 npm install
 npm run dev
 ```
 
 The frontend will run on **http://localhost:3000**
 
+KEEP THIS TERMINAL RUNNING!
+
+### 3. Test the Application
+
+1. Open browser to **http://localhost:3000**
+2. Click "Get Started" to create an account
+3. Fill in signup form and create account
+4. You'll be redirected to the dashboard
+5. See your stats and explore!
+
+See **SETUP_AND_TEST_GUIDE.md** for detailed testing instructions.
+
+## Current Features (Working)
+
+### Authentication
+- User signup with role selection (Member/Trainer)
+- User login with JWT tokens
+- Protected routes and dashboard
+- Logout functionality
+
+### Backend API (All Working)
+- User authentication endpoints
+- User profile management
+- Exercise library (6 pre-loaded exercises)
+- Workout management
+- Session/workout logging
+- User statistics
+
+### Frontend Pages
+- Landing page
+- Login page (connected to API)
+- Signup page (connected to API)
+- Dashboard (protected, shows user stats)
+
 ## Development
 
-- **Frontend**: Runs on port 3000
-- **Backend**: Runs on port 4000
-- **Database**: Runs on port 5432 (if using Docker)
+- **Frontend**: Port 3000 (auto-reload on save)
+- **Backend**: Port 5000 (auto-reload on save)
+- **Storage**: In-memory (data clears on restart)
 
-### API Endpoints
+## API Endpoints Available
 
-- `GET /api/health` - Health check
-- `POST /api/auth/register` - User registration (to be implemented)
-- `POST /api/auth/login` - User login (to be implemented)
+Full list in SETUP_AND_TEST_GUIDE.md and INTEGRATION_GUIDE.md
+
+### Quick Reference
+- `POST /api/auth/signup` - Create account
+- `POST /api/auth/login` - Login
+- `GET /api/auth/me` - Get current user
+- `GET /api/exercises` - Get all exercises
+- `POST /api/workouts` - Create workout
+- `POST /api/sessions` - Log workout session
+- `GET /api/users/:id/stats` - Get user stats
 
 ## Next Steps
 
-1. Implement user authentication with JWT
-2. Create database models and controllers
-3. Build out frontend components and pages
-4. Add workout tracking features
-5. Implement user progress tracking
+1. **Add More Pages**: Workout creator, exercise browser, session logger
+2. **Set Up PostgreSQL**: Migrate from in-memory to persistent database
+3. **Add Features**: Progress charts, workout history, social features
+4. **Enhance UI**: More animations, better mobile responsiveness
 
 ## Contributing
 
