@@ -329,4 +329,90 @@ router.get('/:id/stats', requireAuth, (req, res) => {
   }
 });
 
+/**
+ * ========================================
+ * PUT /api/users/:id/password
+ * ========================================
+ * 
+ * Change user password (Protected)
+ * Users can only change their own password
+ * 
+ * Request Body:
+ * {
+ *   "currentPassword": "oldpassword123",
+ *   "newPassword": "newpassword123"
+ * }
+ * 
+ * Response (200 OK):
+ * {
+ *   "success": true,
+ *   "message": "Password changed successfully"
+ * }
+ */
+router.put('/:id/password', requireAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const currentUser = req.user;
+    const { currentPassword, newPassword } = req.body;
+
+    // Authorization check
+    if (currentUser.id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only change your own password',
+      });
+    }
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required',
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long',
+      });
+    }
+
+    // Get user
+    const user = findUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    updateUser(userId, { password: hashedPassword });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error changing password',
+      error: error.message,
+    });
+  }
+});
+
 export default router;

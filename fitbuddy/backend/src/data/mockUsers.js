@@ -110,6 +110,9 @@ export const createUser = (userData) => {
     email: userData.email.toLowerCase(),
     password: userData.password, // Already hashed before this function is called
     role: userData.role || 'member', // Default role is 'member'
+    bio: userData.bio || '',
+    avatar: userData.avatar || '',
+    phone: userData.phone || '',
     createdAt: new Date().toISOString(),
   };
   
