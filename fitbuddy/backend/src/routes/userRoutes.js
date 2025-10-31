@@ -16,7 +16,7 @@
 
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { findUserById, updateUser, deleteUser } from '../data/mockUsers.js';
+import { findUserById, updateUser, deleteUser, updateUserPassword } from '../db/users.js';
 import { getUserSessionStats } from '../data/mockData.js';
 import requireAuth from '../middleware/requireAuth.js';
 
@@ -45,7 +45,7 @@ const router = express.Router();
  *   }
  * }
  */
-router.get('/:id', requireAuth, (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     const currentUser = req.user; // From JWT middleware
@@ -58,7 +58,7 @@ router.get('/:id', requireAuth, (req, res) => {
       });
     }
 
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -67,7 +67,7 @@ router.get('/:id', requireAuth, (req, res) => {
     }
 
     // Don't send password hash
-    const { password, ...userWithoutPassword } = user;
+    const { password_hash, ...userWithoutPassword } = user;
 
     res.status(200).json({
       success: true,
@@ -123,7 +123,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     // Check if user exists
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -186,10 +186,10 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     // Perform update
-    const updatedUser = updateUser(userId, updates);
+    const updatedUser = await updateUser(userId, updates);
 
     // Don't send password hash
-    const { password, ...userWithoutPassword } = updatedUser;
+    const { password_hash, ...userWithoutPassword } = updatedUser;
 
     res.status(200).json({
       success: true,
@@ -219,7 +219,7 @@ router.put('/:id', requireAuth, async (req, res) => {
  *   "message": "User account deleted successfully"
  * }
  */
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     const currentUser = req.user;
@@ -233,7 +233,7 @@ router.delete('/:id', requireAuth, (req, res) => {
     }
 
     // Check if user exists
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -242,7 +242,7 @@ router.delete('/:id', requireAuth, (req, res) => {
     }
 
     // Delete user
-    const deleted = deleteUser(userId);
+    const deleted = await deleteUser(userId);
 
     if (!deleted) {
       return res.status(500).json({
@@ -286,7 +286,7 @@ router.delete('/:id', requireAuth, (req, res) => {
  *   }
  * }
  */
-router.get('/:id/stats', requireAuth, (req, res) => {
+router.get('/:id/stats', requireAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     const currentUser = req.user;
@@ -300,7 +300,7 @@ router.get('/:id/stats', requireAuth, (req, res) => {
     }
 
     // Check if user exists
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -371,15 +371,8 @@ router.put('/:id/password', requireAuth, async (req, res) => {
       });
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 8 characters long',
-      });
-    }
-
     // Get user
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -388,7 +381,7 @@ router.put('/:id/password', requireAuth, async (req, res) => {
     }
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
@@ -400,7 +393,7 @@ router.put('/:id/password', requireAuth, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    updateUser(userId, { password: hashedPassword });
+    await updateUserPassword(userId, hashedPassword);
 
     res.status(200).json({
       success: true,

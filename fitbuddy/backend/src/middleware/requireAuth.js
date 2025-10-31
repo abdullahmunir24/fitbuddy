@@ -21,7 +21,7 @@
  */
 
 import { verifyToken, extractTokenFromHeader } from '../utils/token.js';
-import { findUserById } from '../data/mockUsers.js';
+import { findUserById } from '../db/users.js';
 
 /**
  * Middleware to require authentication for protected routes
@@ -99,8 +99,7 @@ const requireAuth = async (req, res, next) => {
     }
     
     // Step 4: Look up the user from the decoded token data
-    // TODO: Replace with database query when PostgreSQL is ready
-    const user = findUserById(decoded.userId);
+    const user = await findUserById(decoded.userId);
     
     if (!user) {
       return res.status(401).json({
@@ -111,7 +110,7 @@ const requireAuth = async (req, res, next) => {
     
     // Step 5: Attach user to request object (without password!)
     // Remove sensitive data before attaching to request
-    const { password, ...userWithoutPassword } = user;
+    const { password_hash, ...userWithoutPassword } = user;
     req.user = userWithoutPassword;
     
     // Step 6: Continue to the next middleware/route handler
