@@ -63,10 +63,6 @@ const Signup = () => {
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Password must contain uppercase, lowercase, and number';
     }
 
     // Confirm password validation
@@ -232,17 +228,6 @@ const Signup = () => {
               error={errors.role}
               required
             />
-
-            {/* Password Requirements Info */}
-            <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
-              <p className="text-xs text-dark-600 font-medium mb-1">Password must contain:</p>
-              <ul className="text-xs text-dark-600 space-y-0.5 ml-4 list-disc">
-                <li>At least 8 characters</li>
-                <li>One uppercase letter</li>
-                <li>One lowercase letter</li>
-                <li>One number</li>
-              </ul>
-            </div>
 
             {/* Submit Button */}
             <Button

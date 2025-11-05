@@ -20,7 +20,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { signToken } from '../utils/token.js';
-import { findUserByEmail, createUser, findUserById } from '../data/mockUsers.js';
+import { findUserByEmail, createUser, findUserById } from '../db/users.js';
 import requireAuth from '../middleware/requireAuth.js';
 
 const router = express.Router();
@@ -93,11 +93,11 @@ router.post('/signup', async (req, res) => {
       });
     }
     
-    // Validate password strength
-    if (!password || password.length < 8) {
+    // Validate password exists
+    if (!password) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 8 characters long',
+        message: 'Password is required',
       });
     }
     
@@ -116,11 +116,7 @@ router.post('/signup', async (req, res) => {
     // Step 2: Check if email already exists
     // =====================================
     
-    // TODO: Replace with PostgreSQL query
-    // const result = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
-    // const existingUser = result.rows[0];
-    
-    const existingUser = findUserByEmail(email);
+    const existingUser = await findUserByEmail(email.toLowerCase());
     
     if (existingUser) {
       return res.status(409).json({
@@ -141,14 +137,7 @@ router.post('/signup', async (req, res) => {
     // Step 4: Create the user
     // =====================================
     
-    // TODO: Replace with PostgreSQL INSERT query
-    // const result = await pool.query(
-    //   'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, created_at',
-    //   [name.trim(), email.toLowerCase(), hashedPassword, userRole]
-    // );
-    // const newUser = result.rows[0];
-    
-    const newUser = createUser({
+    const newUser = await createUser({
       name: name.trim(),
       email: email.toLowerCase(),
       password: hashedPassword,
@@ -253,11 +242,7 @@ router.post('/login', async (req, res) => {
     // Step 2: Find user by email
     // =====================================
     
-    // TODO: Replace with PostgreSQL query
-    // const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
-    // const user = result.rows[0];
-    
-    const user = findUserByEmail(email);
+    const user = await findUserByEmail(email.toLowerCase());
     
     if (!user) {
       // Don't reveal whether email exists (security best practice)
@@ -272,7 +257,7 @@ router.post('/login', async (req, res) => {
     // =====================================
     
     // Compare provided password with hashed password in database
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -295,7 +280,7 @@ router.post('/login', async (req, res) => {
     // Step 5: Send response (excluding password)
     // =====================================
     
-    const { password: _, ...userWithoutPassword } = user;
+    const { password_hash: _, ...userWithoutPassword } = user;
     
     return res.status(200).json({
       success: true,
