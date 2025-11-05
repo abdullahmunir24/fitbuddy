@@ -116,8 +116,8 @@ const Signup = () => {
       console.log('Signup successful:', data.data.user);
       alert('Account created successfully!');
       
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Redirect to member dashboard
+      navigate('/member/dashboard');
       
     } catch (error) {
       console.error('Signup error:', error);

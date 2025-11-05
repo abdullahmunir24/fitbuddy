@@ -82,8 +82,8 @@ const Login = () => {
       console.log('Login successful:', data.data.user);
       alert('Welcome back!');
       
-      // Navigate to dashboard
-      navigate('/dashboard');
+      // Navigate to member dashboard
+      navigate('/member/dashboard');
       
     } catch (error) {
       console.error('Login error:', error);
