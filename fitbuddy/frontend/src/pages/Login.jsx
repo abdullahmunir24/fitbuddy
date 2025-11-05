@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useRole } from '../context/RoleContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
@@ -9,6 +10,7 @@ import Button from '../../components/Button';
  */
 const Login = () => {
   const navigate = useNavigate();
+  const { setRole, setUser } = useRole();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -80,10 +82,15 @@ const Login = () => {
       localStorage.setItem('user', JSON.stringify(data.data.user));
 
       console.log('Login successful:', data.data.user);
-      alert('Welcome back!');
       
-      // Navigate to member dashboard
-      navigate('/member/dashboard');
+      // Set role and user in context
+      const userRole = data.data.user.role || 'member';
+      setRole(userRole);
+      setUser(data.data.user);
+      
+      // Navigate based on role
+      const dashboardPath = userRole === 'trainer' ? '/trainer/dashboard' : '/member/dashboard';
+      navigate(dashboardPath);
       
     } catch (error) {
       console.error('Login error:', error);

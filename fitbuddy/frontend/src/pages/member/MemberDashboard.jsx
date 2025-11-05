@@ -10,18 +10,19 @@ import { progressStats, recentActivity } from '../../data/mockData';
 
 const MemberDashboard = () => {
   const quickLinks = [
-    { name: 'Workouts', icon: '💪', path: '/member/workouts', color: 'from-blue-500 to-blue-600' },
-    { name: 'Classes', icon: '🏃', path: '/member/classes', color: 'from-purple-500 to-purple-600' },
-    { name: 'Progress', icon: '📈', path: '/member/progress', color: 'from-green-500 to-green-600' },
+    { name: 'Workouts', path: '/member/workouts', color: 'from-blue-500 to-blue-600' },
+    { name: 'Classes', path: '/member/classes', color: 'from-purple-500 to-purple-600' },
+    { name: 'Progress', path: '/member/progress', color: 'from-green-500 to-green-600' },
   ];
 
   const getActivityIcon = (type) => {
-    switch (type) {
-      case 'workout': return '💪';
-      case 'class': return '🏃';
-      case 'achievement': return '🏆';
-      default: return '📌';
-    }
+    const iconMap = {
+      workout: 'W',
+      class: 'C',
+      achievement: 'A',
+      default: 'N'
+    };
+    return iconMap[type] || iconMap.default;
   };
 
   return (
@@ -29,7 +30,7 @@ const MemberDashboard = () => {
       <div className="space-y-8">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-          <h1 className="text-4xl font-bold mb-2">Welcome back, Haider! 🎉</h1>
+          <h1 className="text-4xl font-bold mb-2">Welcome back, Haider!</h1>
           <p className="text-blue-100 text-lg">Ready to crush your fitness goals today?</p>
         </div>
 
@@ -39,7 +40,6 @@ const MemberDashboard = () => {
             title="Workouts Logged"
             value={progressStats.workoutsCompleted}
             subtitle={`${progressStats.workoutsGoal - progressStats.workoutsCompleted} more to reach monthly goal`}
-            icon="💪"
             className="hover:scale-105 transition-transform duration-300"
           />
           
@@ -47,7 +47,6 @@ const MemberDashboard = () => {
             title="Classes Joined"
             value={progressStats.classesAttended}
             subtitle={`${progressStats.classesGoal - progressStats.classesAttended} more this month`}
-            icon="🏃"
             className="hover:scale-105 transition-transform duration-300"
           />
           
@@ -55,7 +54,6 @@ const MemberDashboard = () => {
             title="Calories Burned"
             value={progressStats.caloriesBurned.toLocaleString()}
             subtitle="Keep up the great work!"
-            icon="🔥"
             className="hover:scale-105 transition-transform duration-300"
           />
         </div>
@@ -71,9 +69,6 @@ const MemberDashboard = () => {
                 className="group"
               >
                 <div className={`bg-gradient-to-br ${link.color} rounded-2xl p-8 text-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
-                  <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                    {link.icon}
-                  </div>
                   <h3 className="text-2xl font-bold mb-2">{link.name}</h3>
                   <p className="text-white/80 flex items-center">
                     Go to {link.name}
@@ -97,7 +92,7 @@ const MemberDashboard = () => {
                   key={activity.id}
                   className="p-4 hover:bg-gray-50 transition-colors duration-200 flex items-center space-x-4"
                 >
-                  <div className="text-3xl">{getActivityIcon(activity.type)}</div>
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 font-semibold">{getActivityIcon(activity.type)}</div>
                   <div className="flex-1">
                     <p className="text-gray-900 font-medium">{activity.description}</p>
                     <p className="text-sm text-gray-500">{activity.time}</p>
@@ -110,12 +105,9 @@ const MemberDashboard = () => {
 
         {/* Motivational Card */}
         <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center space-x-4">
-            <div className="text-5xl">🎯</div>
-            <div>
-              <h3 className="text-xl font-bold mb-1">You're on fire!</h3>
-              <p className="text-white/90">You're 80% closer to your monthly goal. Keep pushing!</p>
-            </div>
+          <div>
+            <h3 className="text-xl font-bold mb-1">You're on fire!</h3>
+            <p className="text-white/90">You're 80% closer to your monthly goal. Keep pushing!</p>
           </div>
         </div>
       </div>

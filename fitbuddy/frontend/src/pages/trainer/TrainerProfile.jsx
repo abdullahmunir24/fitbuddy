@@ -1,6 +1,6 @@
 /**
- * MemberProfile.jsx
- * User profile page with editable information
+ * TrainerProfile.jsx
+ * Professional profile page for trainers
  */
 
 import { useState } from 'react';
@@ -8,7 +8,7 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 import Modal from '../../components/Modal';
 import { useRole } from '../../context/RoleContext';
 
-const MemberProfile = () => {
+const TrainerProfile = () => {
   const { user, setUser } = useRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -16,7 +16,11 @@ const MemberProfile = () => {
     email: user?.email || 'haider@fitbuddy.com',
     phone: '+1 (250) 555-0123',
     location: 'Kelowna, BC',
-    bio: 'Fitness enthusiast and gym lover. Always looking to improve and stay healthy!',
+    bio: 'Certified fitness trainer with 8+ years of experience. Specializing in HIIT, strength training, and nutritional guidance. Passionate about helping clients achieve their fitness goals.',
+    specializations: ['HIIT', 'Strength Training', 'Yoga', 'Nutrition'],
+    certifications: ['NASM-CPT', 'ACE Group Fitness', 'Yoga Alliance RYT-200'],
+    yearsExperience: 8,
+    hourlyRate: 75,
   });
 
   const handleInputChange = (e) => {
@@ -33,9 +37,16 @@ const MemberProfile = () => {
   };
 
   const stats = [
-    { label: 'Total Workouts', value: '28', color: 'from-blue-500 to-blue-600' },
-    { label: 'Classes Joined', value: '7', color: 'from-purple-500 to-purple-600' },
-    { label: 'Member Since', value: 'Jan 2024', color: 'from-green-500 to-green-600' },
+    { label: 'Active Clients', value: '42', color: 'from-blue-500 to-blue-600' },
+    { label: 'Classes Taught', value: '156', color: 'from-purple-500 to-purple-600' },
+    { label: 'Years Experience', value: formData.yearsExperience, color: 'from-green-500 to-green-600' },
+    { label: 'Average Rating', value: '4.8', color: 'from-orange-500 to-orange-600' },
+  ];
+
+  const reviews = [
+    { id: 1, client: 'Sarah J.', rating: 5, comment: 'Best trainer I\'ve ever worked with! Very knowledgeable and motivating.', date: '2 days ago' },
+    { id: 2, client: 'Mike C.', rating: 5, comment: 'Great classes, excellent technique corrections. Highly recommended!', date: '1 week ago' },
+    { id: 3, client: 'Emma D.', rating: 5, comment: 'Professional and results-driven. Helped me reach my goals!', date: '2 weeks ago' },
   ];
 
   return (
@@ -44,7 +55,7 @@ const MemberProfile = () => {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-1">Manage your account information</p>
+          <p className="text-gray-600 mt-1">Manage your professional trainer profile</p>
         </div>
 
         {/* Profile Card */}
@@ -65,6 +76,11 @@ const MemberProfile = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
+              <div className="absolute bottom-0 right-0 mb-3 mr-14">
+                <span className="px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-xs font-semibold">
+                  Certified Trainer
+                </span>
+              </div>
             </div>
 
             {/* User Info */}
@@ -91,6 +107,12 @@ const MemberProfile = () => {
                     </svg>
                     <span>{formData.location}</span>
                   </div>
+                  <div className="flex items-center text-gray-600">
+                    <svg className="w-5 h-5 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${formData.hourlyRate}/hour</span>
+                  </div>
                 </div>
               </div>
 
@@ -103,15 +125,45 @@ const MemberProfile = () => {
             </div>
 
             {/* Bio */}
-            <div className="bg-gray-50 rounded-xl p-4">
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">About</h3>
               <p className="text-gray-600">{formData.bio}</p>
+            </div>
+
+            {/* Specializations */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Specializations</h3>
+              <div className="flex flex-wrap gap-2">
+                {formData.specializations.map((spec, index) => (
+                  <span
+                    key={index}
+                    className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium"
+                  >
+                    {spec}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Certifications */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Certifications</h3>
+              <div className="flex flex-wrap gap-2">
+                {formData.certifications.map((cert, index) => (
+                  <span
+                    key={index}
+                    className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200"
+                  >
+                    {cert}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {stats.map((stat) => (
             <div
               key={stat.label}
@@ -123,43 +175,36 @@ const MemberProfile = () => {
           ))}
         </div>
 
-        {/* Preferences */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Preferences</h2>
-          
+        {/* Client Reviews */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Client Reviews</h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div>
-                <p className="font-semibold text-gray-900">Email Notifications</p>
-                <p className="text-sm text-gray-600">Receive updates about your workouts</p>
+            {reviews.map((review) => (
+              <div
+                key={review.id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                      {review.client.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">{review.client}</h3>
+                      <p className="text-sm text-gray-500">{review.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    {[...Array(review.rating)].map((_, i) => (
+                      <svg key={i} className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-gray-600">{review.comment}</p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" defaultChecked />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div>
-                <p className="font-semibold text-gray-900">Push Notifications</p>
-                <p className="text-sm text-gray-600">Get reminders for your classes</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" defaultChecked />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div>
-                <p className="font-semibold text-gray-900">Weekly Reports</p>
-                <p className="text-sm text-gray-600">Get your weekly progress summary</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -218,12 +263,23 @@ const MemberProfile = () => {
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Hourly Rate ($)</label>
+            <input
+              type="number"
+              name="hourlyRate"
+              value={formData.hourlyRate}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Bio</label>
             <textarea
               name="bio"
               value={formData.bio}
               onChange={handleInputChange}
-              rows="3"
+              rows="4"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
           </div>
@@ -249,4 +305,5 @@ const MemberProfile = () => {
   );
 };
 
-export default MemberProfile;
+export default TrainerProfile;
+

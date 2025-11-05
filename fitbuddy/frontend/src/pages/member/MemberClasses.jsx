@@ -40,8 +40,7 @@ const MemberClasses = () => {
         {/* My Classes Section */}
         {myClasses.length > 0 && (
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-              <span className="mr-2">🎯</span>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
               My Classes
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -56,7 +55,7 @@ const MemberClasses = () => {
                       <p className="text-blue-100 text-sm">with {cls.instructor}</p>
                     </div>
                     <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
-                      Joined ✓
+                      Joined
                     </span>
                   </div>
 
@@ -83,14 +82,12 @@ const MemberClasses = () => {
 
         {/* Available Classes Section */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-            <span className="mr-2">📚</span>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
             Available Classes
           </h2>
           
           {availableClasses.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-              <div className="text-6xl mb-4">🎉</div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">All Caught Up!</h3>
               <p className="text-gray-600">You've joined all available classes. Check back later for new sessions.</p>
             </div>
@@ -145,16 +142,13 @@ const MemberClasses = () => {
 
         {/* Info Card */}
         <div className="bg-gradient-to-r from-green-400 to-teal-500 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-start space-x-4">
-            <div className="text-4xl">💡</div>
-            <div>
-              <h3 className="text-xl font-bold mb-2">Class Tips</h3>
-              <ul className="space-y-1 text-green-50">
-                <li>• Join classes 5 minutes early to warm up</li>
-                <li>• Keep your water bottle handy</li>
-                <li>• Listen to your body and take breaks when needed</li>
-              </ul>
-            </div>
+          <div>
+            <h3 className="text-xl font-bold mb-2">Class Tips</h3>
+            <ul className="space-y-1 text-green-50">
+              <li>• Join classes 5 minutes early to warm up</li>
+              <li>• Keep your water bottle handy</li>
+              <li>• Listen to your body and take breaks when needed</li>
+            </ul>
           </div>
         </div>
       </div>

@@ -6,7 +6,7 @@
 import { useRole } from '../context/RoleContext';
 
 const Navbar = () => {
-  const { user, logout } = useRole();
+  const { user, role, logout } = useRole();
 
   return (
     <nav className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 sticky top-0 z-40 backdrop-blur-xl bg-white/95">
@@ -14,7 +14,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
           {/* Page Title */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome back! 👋</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
             <p className="text-sm text-gray-500 mt-1">Let's crush your fitness goals today</p>
           </div>
 
@@ -38,7 +38,7 @@ const Navbar = () => {
               {/* Name & Role */}
               <div className="hidden md:block">
                 <p className="text-sm font-semibold text-gray-900">{user?.name || 'Haider Ali'}</p>
-                <p className="text-xs text-gray-500">Member</p>
+                <p className="text-xs text-gray-500 capitalize">{role || 'Member'}</p>
               </div>
             </div>
 

@@ -76,19 +76,16 @@ const MemberWorkouts = () => {
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-4xl mb-3">💪</div>
             <div className="text-3xl font-bold mb-1">{totalWorkouts}</div>
             <div className="text-blue-100">Total Workouts</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-4xl mb-3">🔥</div>
             <div className="text-3xl font-bold mb-1">{totalCalories}</div>
             <div className="text-purple-100">Calories Burned</div>
           </div>
 
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-4xl mb-3">⏱️</div>
             <div className="text-3xl font-bold mb-1">12.5</div>
             <div className="text-green-100">Hours This Week</div>
           </div>

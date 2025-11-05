@@ -13,31 +13,28 @@ const MemberProgress = () => {
       current: progressStats.workoutsCompleted,
       goal: progressStats.workoutsGoal,
       color: 'from-blue-500 to-blue-600',
-      icon: '💪',
     },
     {
       label: 'Classes Attended',
       current: progressStats.classesAttended,
       goal: progressStats.classesGoal,
       color: 'from-purple-500 to-purple-600',
-      icon: '🏃',
     },
     {
       label: 'Calories Goal',
       current: progressStats.caloriesBurned,
       goal: progressStats.caloriesGoal,
       color: 'from-orange-500 to-red-600',
-      icon: '🔥',
     },
   ];
 
   const achievements = [
-    { id: 1, title: 'First Workout', description: 'Completed your first workout', icon: '🎯', unlocked: true },
-    { id: 2, title: 'Week Warrior', description: '7 day workout streak', icon: '⚡', unlocked: true },
-    { id: 3, title: 'Class Champion', description: 'Attended 5 classes', icon: '🏆', unlocked: true },
-    { id: 4, title: 'Iron Will', description: 'Complete 50 workouts', icon: '💎', unlocked: false },
-    { id: 5, title: 'Calorie Crusher', description: 'Burn 20,000 calories', icon: '🔥', unlocked: false },
-    { id: 6, title: 'Perfect Month', description: '30 day workout streak', icon: '👑', unlocked: false },
+    { id: 1, title: 'First Workout', description: 'Completed your first workout', unlocked: true },
+    { id: 2, title: 'Week Warrior', description: '7 day workout streak', unlocked: true },
+    { id: 3, title: 'Class Champion', description: 'Attended 5 classes', unlocked: true },
+    { id: 4, title: 'Iron Will', description: 'Complete 50 workouts', unlocked: false },
+    { id: 5, title: 'Calorie Crusher', description: 'Burn 20,000 calories', unlocked: false },
+    { id: 6, title: 'Perfect Month', description: '30 day workout streak', unlocked: false },
   ];
 
   const getPercentage = (current, goal) => Math.min((current / goal) * 100, 100);
@@ -53,12 +50,9 @@ const MemberProgress = () => {
 
         {/* Motivational Banner */}
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-2xl p-8 text-white shadow-xl">
-          <div className="flex items-center space-x-4">
-            <div className="text-6xl">🚀</div>
-            <div>
-              <h2 className="text-3xl font-bold mb-2">You're on track!</h2>
-              <p className="text-green-50 text-lg">You're on pace to beat last week's stats by 15%. Keep pushing!</p>
-            </div>
+          <div>
+            <h2 className="text-3xl font-bold mb-2">You're on track!</h2>
+            <p className="text-green-50 text-lg">You're on pace to beat last week's stats by 15%. Keep pushing!</p>
           </div>
         </div>
 
@@ -72,14 +66,11 @@ const MemberProgress = () => {
             return (
               <div key={item.label} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-3xl">{item.icon}</span>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">{item.label}</h3>
-                      <p className="text-sm text-gray-600">
-                        {item.current} of {item.goal} {item.label === 'Calories Goal' ? 'calories' : ''}
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{item.label}</h3>
+                    <p className="text-sm text-gray-600">
+                      {item.current} of {item.goal} {item.label === 'Calories Goal' ? 'calories' : ''}
+                    </p>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-gray-900">{percentage.toFixed(0)}%</div>
@@ -107,25 +98,21 @@ const MemberProgress = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">This Week</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl mb-3">📅</div>
               <div className="text-3xl font-bold mb-1">5</div>
               <div className="text-blue-100 text-sm">Days Active</div>
             </div>
 
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl mb-3">⏱️</div>
               <div className="text-3xl font-bold mb-1">4.5</div>
               <div className="text-green-100 text-sm">Hours Trained</div>
             </div>
 
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl mb-3">🎯</div>
               <div className="text-3xl font-bold mb-1">8</div>
               <div className="text-purple-100 text-sm">Workouts Done</div>
             </div>
 
             <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl mb-3">🔥</div>
               <div className="text-3xl font-bold mb-1">2,840</div>
               <div className="text-orange-100 text-sm">Calories Burned</div>
             </div>
@@ -134,8 +121,7 @@ const MemberProgress = () => {
 
         {/* Achievements */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-            <span className="mr-2">🏆</span>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
             Achievements
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -148,26 +134,21 @@ const MemberProgress = () => {
                     : 'bg-gray-100 text-gray-400 border-gray-200'
                 }`}
               >
-                <div className="flex items-start space-x-4">
-                  <div className={`text-4xl ${achievement.unlocked ? 'scale-110' : 'grayscale opacity-50'}`}>
-                    {achievement.icon}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-bold mb-1 ${achievement.unlocked ? 'text-white' : 'text-gray-500'}`}>
-                      {achievement.title}
-                    </h3>
-                    <p className={`text-sm ${achievement.unlocked ? 'text-white/90' : 'text-gray-400'}`}>
-                      {achievement.description}
-                    </p>
-                    {achievement.unlocked && (
-                      <div className="mt-3 flex items-center space-x-1 text-white/90 text-xs font-semibold">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span>Unlocked</span>
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <h3 className={`text-lg font-bold mb-1 ${achievement.unlocked ? 'text-white' : 'text-gray-500'}`}>
+                    {achievement.title}
+                  </h3>
+                  <p className={`text-sm ${achievement.unlocked ? 'text-white/90' : 'text-gray-400'}`}>
+                    {achievement.description}
+                  </p>
+                  {achievement.unlocked && (
+                    <div className="mt-3 flex items-center space-x-1 text-white/90 text-xs font-semibold">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>Unlocked</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
