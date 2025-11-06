@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useRole } from '../context/RoleContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Select from '../../components/Select';
@@ -10,6 +11,7 @@ import Select from '../../components/Select';
  */
 const Signup = () => {
   const navigate = useNavigate();
+  const { setRole, setUser } = useRole();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -114,10 +116,17 @@ const Signup = () => {
       localStorage.setItem('user', JSON.stringify(data.data.user));
 
       console.log('Signup successful:', data.data.user);
+      
+      // Set role and user in context
+      const userRole = data.data.user.role || 'member';
+      setRole(userRole);
+      setUser(data.data.user);
+      
       alert('Account created successfully!');
       
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Redirect based on user role
+      const dashboardPath = userRole === 'trainer' ? '/trainer/dashboard' : '/member/dashboard';
+      navigate(dashboardPath);
       
     } catch (error) {
       console.error('Signup error:', error);
