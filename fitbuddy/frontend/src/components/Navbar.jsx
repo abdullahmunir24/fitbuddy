@@ -7,6 +7,29 @@ import { useRole } from '../context/RoleContext';
 
 const Navbar = () => {
   const { user, role, logout } = useRole();
+  
+  // Get user name and role, with fallback to localStorage if context isn't ready
+  const getUserData = () => {
+    if (user?.name || user?.full_name) return user;
+    
+    // Fallback: try to get from localStorage directly
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        return parsed;
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+    return null;
+  };
+  
+  const currentUser = getUserData();
+  // Handle both name and full_name fields
+  const displayName = currentUser?.name || currentUser?.full_name || 'User';
+  const displayRole = role || currentUser?.role || 'Member';
+  console.log('Navbar - user:', user, 'currentUser:', currentUser, 'displayName:', displayName, 'displayRole:', displayRole);
 
   return (
     <nav className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 sticky top-0 z-40 backdrop-blur-xl bg-white/95">
@@ -32,13 +55,13 @@ const Navbar = () => {
             <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
               {/* Avatar */}
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
-                {user?.name?.charAt(0) || 'H'}
+                {displayName.charAt(0).toUpperCase()}
               </div>
               
               {/* Name & Role */}
               <div className="hidden md:block">
-                <p className="text-sm font-semibold text-gray-900">{user?.name || 'Haider Ali'}</p>
-                <p className="text-xs text-gray-500 capitalize">{role || 'Member'}</p>
+                <p className="text-sm font-semibold text-gray-900">{displayName}</p>
+                <p className="text-xs text-gray-500 capitalize">{displayRole}</p>
               </div>
             </div>
 

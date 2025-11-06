@@ -4,7 +4,7 @@
  * Provides role information and authentication utilities
  */
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const RoleContext = createContext();
@@ -19,12 +19,44 @@ export const useRole = () => {
 
 export const RoleProvider = ({ children }) => {
   const navigate = useNavigate();
-  const [role, setRole] = useState('member');
-  const [user, setUser] = useState({
-    name: 'Haider Ali',
-    email: 'haider@fitbuddy.com',
-    avatar: null,
-  });
+  
+  // Initialize state from localStorage if available
+  const getInitialUser = () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        console.log('Initial user loaded from localStorage:', parsed);
+        return parsed;
+      }
+    } catch (error) {
+      console.error('Error parsing stored user:', error);
+    }
+    return null;
+  };
+
+  const initialUser = getInitialUser();
+  const [role, setRole] = useState(initialUser?.role || 'member');
+  const [user, setUser] = useState(initialUser);
+
+  // Update role and user when localStorage changes or on mount
+  useEffect(() => {
+    const loadUser = () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('User loaded in useEffect:', parsedUser);
+          setUser(parsedUser);
+          setRole(parsedUser.role || 'member');
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const logout = () => {
     setRole(null);

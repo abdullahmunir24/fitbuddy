@@ -11,12 +11,28 @@ import { useRole } from '../../context/RoleContext';
 const MemberProfile = () => {
   const { user, setUser } = useRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Initialize formData from user context or localStorage
+  const getUserData = () => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+      }
+    }
+    return user;
+  };
+
+  const currentUser = getUserData();
+  
   const [formData, setFormData] = useState({
-    name: user?.name || 'Haider Ali',
-    email: user?.email || 'haider@fitbuddy.com',
-    phone: '+1 (250) 555-0123',
-    location: 'Kelowna, BC',
-    bio: 'Fitness enthusiast and gym lover. Always looking to improve and stay healthy!',
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
+    phone: currentUser?.phone || '+1 (250) 555-0123',
+    location: currentUser?.location || 'Kelowna, BC',
+    bio: currentUser?.bio || 'Fitness enthusiast and gym lover. Always looking to improve and stay healthy!',
   });
 
   const handleInputChange = (e) => {
@@ -28,7 +44,16 @@ const MemberProfile = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setUser({ ...user, name: formData.name, email: formData.email });
+    const updatedUser = { 
+      ...currentUser, 
+      name: formData.name, 
+      email: formData.email,
+      phone: formData.phone,
+      location: formData.location,
+      bio: formData.bio
+    };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
     setIsModalOpen(false);
   };
 

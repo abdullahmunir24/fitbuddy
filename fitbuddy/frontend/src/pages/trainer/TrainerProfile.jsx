@@ -11,16 +11,32 @@ import { useRole } from '../../context/RoleContext';
 const TrainerProfile = () => {
   const { user, setUser } = useRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Initialize formData from user context or localStorage
+  const getUserData = () => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+      }
+    }
+    return user;
+  };
+
+  const currentUser = getUserData();
+  
   const [formData, setFormData] = useState({
-    name: user?.name || 'Haider Ali',
-    email: user?.email || 'haider@fitbuddy.com',
-    phone: '+1 (250) 555-0123',
-    location: 'Kelowna, BC',
-    bio: 'Certified fitness trainer with 8+ years of experience. Specializing in HIIT, strength training, and nutritional guidance. Passionate about helping clients achieve their fitness goals.',
-    specializations: ['HIIT', 'Strength Training', 'Yoga', 'Nutrition'],
-    certifications: ['NASM-CPT', 'ACE Group Fitness', 'Yoga Alliance RYT-200'],
-    yearsExperience: 8,
-    hourlyRate: 75,
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
+    phone: currentUser?.phone || '+1 (250) 555-0123',
+    location: currentUser?.location || 'Kelowna, BC',
+    bio: currentUser?.bio || 'Certified fitness trainer with 8+ years of experience. Specializing in HIIT, strength training, and nutritional guidance. Passionate about helping clients achieve their fitness goals.',
+    specializations: currentUser?.specializations || ['HIIT', 'Strength Training', 'Yoga', 'Nutrition'],
+    certifications: currentUser?.certifications || ['NASM-CPT', 'ACE Group Fitness', 'Yoga Alliance RYT-200'],
+    yearsExperience: currentUser?.yearsExperience || 8,
+    hourlyRate: currentUser?.hourlyRate || 75,
   });
 
   const handleInputChange = (e) => {
@@ -32,7 +48,20 @@ const TrainerProfile = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setUser({ ...user, name: formData.name, email: formData.email });
+    const updatedUser = { 
+      ...currentUser, 
+      name: formData.name, 
+      email: formData.email,
+      phone: formData.phone,
+      location: formData.location,
+      bio: formData.bio,
+      specializations: formData.specializations,
+      certifications: formData.certifications,
+      yearsExperience: formData.yearsExperience,
+      hourlyRate: formData.hourlyRate
+    };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
     setIsModalOpen(false);
   };
 

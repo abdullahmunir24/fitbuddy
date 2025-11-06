@@ -4,11 +4,35 @@
  */
 
 import { Link } from 'react-router-dom';
+import { useRole } from '../../context/RoleContext';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import Card from '../../components/Card';
 import { progressStats, recentActivity } from '../../data/mockData';
 
 const MemberDashboard = () => {
+  const { user } = useRole();
+  
+  // Get user name, with fallback to localStorage if context isn't ready
+  const getUserName = () => {
+    if (user?.name || user?.full_name) {
+      return user.name || user.full_name;
+    }
+    
+    // Fallback: try to get from localStorage directly
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        return parsed.name || parsed.full_name || 'there';
+      }
+    } catch (error) {
+      console.error('Error loading user name:', error);
+    }
+    return 'there';
+  };
+  
+  const userName = getUserName();
+  console.log('MemberDashboard - user:', user, 'userName:', userName);
   const quickLinks = [
     { name: 'Workouts', path: '/member/workouts', color: 'from-blue-500 to-blue-600' },
     { name: 'Classes', path: '/member/classes', color: 'from-purple-500 to-purple-600' },
@@ -30,7 +54,7 @@ const MemberDashboard = () => {
       <div className="space-y-8">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-          <h1 className="text-4xl font-bold mb-2">Welcome back, Haider!</h1>
+          <h1 className="text-4xl font-bold mb-2">Welcome back, {userName.split(' ')[0]}!</h1>
           <p className="text-blue-100 text-lg">Ready to crush your fitness goals today?</p>
         </div>
 

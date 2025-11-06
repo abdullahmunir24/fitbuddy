@@ -111,7 +111,18 @@ const requireAuth = async (req, res, next) => {
     // Step 5: Attach user to request object (without password!)
     // Remove sensitive data before attaching to request
     const { password_hash, ...userWithoutPassword } = user;
-    req.user = userWithoutPassword;
+    
+    // Normalize user object: map full_name to name for frontend consistency
+    const normalizedUser = {
+      ...userWithoutPassword,
+      name: userWithoutPassword.full_name || userWithoutPassword.name,
+    };
+    // Remove full_name if it exists (keep only name)
+    if (normalizedUser.full_name) {
+      delete normalizedUser.full_name;
+    }
+    
+    req.user = normalizedUser;
     
     // Step 6: Continue to the next middleware/route handler
     next();

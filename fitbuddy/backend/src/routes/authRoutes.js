@@ -158,14 +158,24 @@ router.post('/signup', async (req, res) => {
     // Step 6: Send response (excluding password)
     // =====================================
     
-    const { password: _, ...userWithoutPassword } = newUser;
+    const { password_hash: _, password: __, ...userWithoutPassword } = newUser;
+    
+    // Normalize user object: map full_name to name for frontend consistency
+    const normalizedUser = {
+      ...userWithoutPassword,
+      name: userWithoutPassword.full_name || userWithoutPassword.name,
+    };
+    // Remove full_name if it exists (keep only name)
+    if (normalizedUser.full_name) {
+      delete normalizedUser.full_name;
+    }
     
     return res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
         accessToken,
-        user: userWithoutPassword,
+        user: normalizedUser,
       },
     });
     
@@ -280,14 +290,24 @@ router.post('/login', async (req, res) => {
     // Step 5: Send response (excluding password)
     // =====================================
     
-    const { password_hash: _, ...userWithoutPassword } = user;
+    const { password_hash: _, password: __, ...userWithoutPassword } = user;
+    
+    // Normalize user object: map full_name to name for frontend consistency
+    const normalizedUser = {
+      ...userWithoutPassword,
+      name: userWithoutPassword.full_name || userWithoutPassword.name,
+    };
+    // Remove full_name if it exists (keep only name)
+    if (normalizedUser.full_name) {
+      delete normalizedUser.full_name;
+    }
     
     return res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
         accessToken,
-        user: userWithoutPassword,
+        user: normalizedUser,
       },
     });
     
@@ -370,13 +390,23 @@ router.get('/me', requireAuth, async (req, res) => {
     // For now, we'll use the user data from the token
     
     // =====================================
-    // Step 3: Send response
+    // Step 3: Normalize user object and send response
     // =====================================
+    
+    // Normalize user object: map full_name to name for frontend consistency
+    const normalizedUser = {
+      ...user,
+      name: user.full_name || user.name,
+    };
+    // Remove full_name if it exists (keep only name)
+    if (normalizedUser.full_name) {
+      delete normalizedUser.full_name;
+    }
     
     return res.status(200).json({
       success: true,
       data: {
-        user,
+        user: normalizedUser,
       },
     });
     
