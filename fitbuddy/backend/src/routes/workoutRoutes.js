@@ -19,13 +19,12 @@
 import express from 'express';
 import {
   createWorkout,
-  getAllWorkouts,
-  getWorkoutById,
   getUserWorkouts,
+  getWorkoutById,
   updateWorkout,
+  addExerciseToWorkout,
   deleteWorkout,
-} from '../data/mockData.js';
-import { findUserById } from '../data/mockUsers.js';
+} from '../db/workouts.js';
 import requireAuth from '../middleware/requireAuth.js';
 
 const router = express.Router();
@@ -63,7 +62,7 @@ const router = express.Router();
  */
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { name, description, date, duration, exercises } = req.body;
+    const { name, date, completed, exercises } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -90,13 +89,6 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
 
-    if (duration && (typeof duration !== 'number' || duration < 1)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Duration must be a positive number (in minutes)',
-      });
-    }
-
     if (exercises && !Array.isArray(exercises)) {
       return res.status(400).json({
         success: false,
@@ -107,21 +99,21 @@ router.post('/', requireAuth, async (req, res) => {
     // Validate exercises
     if (exercises) {
       for (const ex of exercises) {
-        if (!ex.exerciseId || !ex.sets || !ex.reps) {
+        if (!ex.name || typeof ex.name !== 'string') {
           return res.status(400).json({
             success: false,
-            message: 'Each exercise must have exerciseId, sets, and reps',
+            message: 'Each exercise must have a name',
           });
         }
 
-        if (typeof ex.sets !== 'number' || ex.sets < 1) {
+        if (ex.sets !== undefined && (typeof ex.sets !== 'number' || ex.sets < 1)) {
           return res.status(400).json({
             success: false,
             message: 'Sets must be a positive number',
           });
         }
 
-        if (typeof ex.reps !== 'number' || ex.reps < 1) {
+        if (ex.reps !== undefined && (typeof ex.reps !== 'number' || ex.reps < 1)) {
           return res.status(400).json({
             success: false,
             message: 'Reps must be a positive number',
@@ -133,14 +125,12 @@ router.post('/', requireAuth, async (req, res) => {
     // Create workout
     const workoutData = {
       name: name.trim(),
-      description: description || '',
       date,
-      duration: duration || 0,
+      completed: completed || false,
       exercises: exercises || [],
-      status: 'draft', // draft or completed
     };
 
-    const newWorkout = createWorkout(userId, workoutData);
+    const newWorkout = await createWorkout(userId, workoutData);
 
     res.status(201).json({
       success: true,
@@ -177,34 +167,15 @@ router.post('/', requireAuth, async (req, res) => {
  *   }
  * }
  */
-router.get('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-
-    if (page < 1 || limit < 1) {
-      return res.status(400).json({
-        success: false,
-        message: 'Page and limit must be positive numbers',
-      });
-    }
-
-    const allWorkouts = getAllWorkouts();
-    const total = allWorkouts.length;
-    const pages = Math.ceil(total / limit);
-    const startIndex = (page - 1) * limit;
-    const paginatedWorkouts = allWorkouts.slice(startIndex, startIndex + limit);
+    const userId = req.user.id;
+    const userWorkouts = await getUserWorkouts(userId);
 
     res.status(200).json({
       success: true,
       message: 'Workouts retrieved successfully',
-      data: paginatedWorkouts,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages,
-      },
+      data: userWorkouts,
     });
   } catch (error) {
     res.status(500).json({
@@ -229,9 +200,10 @@ router.get('/', requireAuth, (req, res) => {
  *   "data": { workout object }
  * }
  */
-router.get('/:id', requireAuth, (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
     const workoutId = parseInt(req.params.id);
+    const userId = req.user.id;
 
     if (isNaN(workoutId)) {
       return res.status(400).json({
@@ -240,7 +212,7 @@ router.get('/:id', requireAuth, (req, res) => {
       });
     }
 
-    const workout = getWorkoutById(workoutId);
+    const workout = await getWorkoutById(workoutId, userId);
 
     if (!workout) {
       return res.status(404).json({
@@ -290,29 +262,12 @@ router.put('/:id', requireAuth, async (req, res) => {
   try {
     const workoutId = parseInt(req.params.id);
     const userId = req.user.id;
-    const { name, description, date, duration, exercises, status } = req.body;
+    const { name, date, completed, exercises } = req.body;
 
     if (isNaN(workoutId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid workout ID',
-      });
-    }
-
-    const workout = getWorkoutById(workoutId);
-
-    if (!workout) {
-      return res.status(404).json({
-        success: false,
-        message: 'Workout not found',
-      });
-    }
-
-    // Authorization: only owner or admin can update
-    if (workout.userId !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to update this workout',
       });
     }
 
@@ -329,10 +284,6 @@ router.put('/:id', requireAuth, async (req, res) => {
       updates.name = name.trim();
     }
 
-    if (description !== undefined) {
-      updates.description = description || '';
-    }
-
     if (date !== undefined) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
@@ -344,14 +295,14 @@ router.put('/:id', requireAuth, async (req, res) => {
       updates.date = date;
     }
 
-    if (duration !== undefined) {
-      if (typeof duration !== 'number' || duration < 0) {
+    if (completed !== undefined) {
+      if (typeof completed !== 'boolean') {
         return res.status(400).json({
           success: false,
-          message: 'Duration must be a non-negative number',
+          message: 'Completed must be a boolean',
         });
       }
-      updates.duration = duration;
+      updates.completed = completed;
     }
 
     if (exercises !== undefined) {
@@ -361,20 +312,26 @@ router.put('/:id', requireAuth, async (req, res) => {
           message: 'Exercises must be an array',
         });
       }
+      // Validate exercises
+      for (const ex of exercises) {
+        if (!ex.name || typeof ex.name !== 'string') {
+          return res.status(400).json({
+            success: false,
+            message: 'Each exercise must have a name',
+          });
+        }
+      }
       updates.exercises = exercises;
     }
 
-    if (status !== undefined) {
-      if (!['draft', 'completed', 'cancelled'].includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Status must be draft, completed, or cancelled',
-        });
-      }
-      updates.status = status;
-    }
+    const updatedWorkout = await updateWorkout(workoutId, userId, updates);
 
-    const updatedWorkout = updateWorkout(workoutId, updates);
+    if (!updatedWorkout) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workout not found or unauthorized',
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -404,7 +361,7 @@ router.put('/:id', requireAuth, async (req, res) => {
  *   "message": "Workout deleted successfully"
  * }
  */
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const workoutId = parseInt(req.params.id);
     const userId = req.user.id;
@@ -416,29 +373,12 @@ router.delete('/:id', requireAuth, (req, res) => {
       });
     }
 
-    const workout = getWorkoutById(workoutId);
-
-    if (!workout) {
-      return res.status(404).json({
-        success: false,
-        message: 'Workout not found',
-      });
-    }
-
-    // Authorization check
-    if (workout.userId !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to delete this workout',
-      });
-    }
-
-    const deleted = deleteWorkout(workoutId);
+    const deleted = await deleteWorkout(workoutId, userId);
 
     if (!deleted) {
-      return res.status(500).json({
+      return res.status(404).json({
         success: false,
-        message: 'Failed to delete workout',
+        message: 'Workout not found or unauthorized',
       });
     }
 
@@ -469,7 +409,7 @@ router.delete('/:id', requireAuth, (req, res) => {
  *   "data": [ workout objects ]
  * }
  */
-router.get('/user/:userId', requireAuth, (req, res) => {
+router.get('/user/:userId', requireAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     const currentUser = req.user;
@@ -489,16 +429,7 @@ router.get('/user/:userId', requireAuth, (req, res) => {
       });
     }
 
-    // Verify user exists
-    const user = findUserById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    const userWorkouts = getUserWorkouts(userId);
+    const userWorkouts = await getUserWorkouts(userId);
 
     res.status(200).json({
       success: true,
@@ -509,6 +440,76 @@ router.get('/user/:userId', requireAuth, (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error retrieving user workouts',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * ========================================
+ * POST /api/workouts/:id/exercises
+ * ========================================
+ * 
+ * Add an exercise to an existing workout (Protected)
+ * 
+ * Request Body:
+ * {
+ *   "name": "Bench Press",
+ *   "sets": 3,
+ *   "reps": 10,
+ *   "weight": "135 lbs"
+ * }
+ */
+router.post('/:id/exercises', requireAuth, async (req, res) => {
+  try {
+    const workoutId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const { name, sets, reps, weight } = req.body;
+
+    if (isNaN(workoutId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid workout ID',
+      });
+    }
+
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Exercise name is required',
+      });
+    }
+
+    if (sets !== undefined && (typeof sets !== 'number' || sets < 1)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sets must be a positive number',
+      });
+    }
+
+    if (reps !== undefined && (typeof reps !== 'number' || reps < 1)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reps must be a positive number',
+      });
+    }
+
+    const exercise = await addExerciseToWorkout(workoutId, userId, {
+      name,
+      sets: sets || 0,
+      reps: reps || 0,
+      weight: weight || 'Body Weight',
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Exercise added to workout successfully',
+      data: exercise,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error adding exercise to workout',
       error: error.message,
     });
   }

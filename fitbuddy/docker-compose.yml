@@ -29,6 +29,11 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: fitbuddy_user
+      DB_PASSWORD: fitbuddy_password
+      DB_NAME: fitbuddy_db
       DATABASE_URL: postgresql://fitbuddy_user:fitbuddy_password@postgres:5432/fitbuddy_db
       JWT_SECRET: your_super_secret_jwt_key_change_this_in_production
       FRONTEND_URL: http://localhost:3000
@@ -40,7 +45,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-    command: npm run dev
+    command: sh -c "sleep 5 && (npm run seed-gyms || true) && npm run dev"
 
   frontend:
     build:

@@ -30,6 +30,7 @@ import userRoutes from './routes/userRoutes.js';
 import workoutRoutes from './routes/workoutRoutes.js';
 import exerciseRoutes from './routes/exerciseRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
+import gymRoutes from './routes/gymRoutes.js';
 
 /**
  * =====================================
@@ -203,6 +204,21 @@ app.use('/api/exercises', exerciseRoutes);
  * - GET /api/sessions/stats/:userId - Get user session statistics (protected)
  */
 app.use('/api/sessions', sessionRoutes);
+
+/**
+ * Gym Finder routes
+ * All gym discovery and management endpoints under /api/gyms
+ * 
+ * Available endpoints:
+ * - GET /api/gyms - Get all gyms (with location filtering)
+ * - GET /api/gyms/search - Search gyms
+ * - GET /api/gyms/:id - Get specific gym
+ * - POST /api/gyms - Create gym (admin only)
+ * - PUT /api/gyms/:id - Update gym (admin only)
+ * - DELETE /api/gyms/:id - Delete gym (admin only)
+ * - GET /api/gyms/:id/facilities - Get gym facilities
+ */
+app.use('/api/gyms', gymRoutes);
 
 /**
  * =====================================
