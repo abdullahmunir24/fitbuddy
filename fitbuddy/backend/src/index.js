@@ -32,6 +32,7 @@ import workoutRoutes from './routes/workoutRoutes.js';
 import exerciseRoutes from './routes/exerciseRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import gymRoutes from './routes/gymRoutes.js';
+import classRoutes from './routes/classRoutes.js';
 
 
 /**
@@ -220,6 +221,24 @@ app.use('/api/sessions', sessionRoutes);
  * - DELETE /api/gyms/:id - Delete gym (protected, admin only)
  */
 app.use('/api/gyms', gymRoutes);
+
+/**
+ * Class routes
+ * All fitness class management endpoints under /api/classes
+ * 
+ * Available endpoints:
+ * - GET /api/classes - Get all available classes (members)
+ * - GET /api/classes/filters - Get filter options
+ * - GET /api/classes/my-bookings - Get member's bookings
+ * - POST /api/classes/book - Book a class
+ * - DELETE /api/classes/bookings/:id - Cancel a booking
+ * - GET /api/classes/trainer - Get trainer's classes
+ * - POST /api/classes - Create a class (trainers)
+ * - GET /api/classes/:id - Get class details
+ * - PUT /api/classes/:id - Update a class
+ * - DELETE /api/classes/:id - Delete a class
+ */
+app.use('/api/classes', classRoutes);
 
 /**
  * =====================================

@@ -1,156 +1,149 @@
-/**
- * MemberClasses.jsx
- * Page for browsing and joining fitness classes
- */
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { classes as initialClasses } from '../../data/mockData';
 
 const MemberClasses = () => {
-  const [classes, setClasses] = useState(initialClasses);
+  const [availableClasses, setAvailableClasses] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('available');
 
-  const toggleJoinClass = (classId) => {
-    setClasses(classes.map(cls => 
-      cls.id === classId ? { ...cls, joined: !cls.joined } : cls
-    ));
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+
+      const [classesRes, bookingsRes] = await Promise.all([
+        fetch(`${apiUrl}/api/classes`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiUrl}/api/classes/my-bookings`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+
+      const classesData = await classesRes.json();
+      const bookingsData = await bookingsRes.json();
+
+      if (classesData.success) setAvailableClasses(classesData.data);
+      if (bookingsData.success) setMyBookings(bookingsData.data);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const availableClasses = classes.filter(cls => !cls.joined);
-  const myClasses = classes.filter(cls => cls.joined);
+  const handleBookClass = async (scheduleId) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/book`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ schedule_id: scheduleId }),
+      });
 
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case 'Beginner': return 'bg-green-100 text-green-700';
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-700';
-      case 'Advanced': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      const data = await response.json();
+      if (data.success) {
+        await fetchData();
+        alert('Class booked!');
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      alert('Failed to book class');
     }
+  };
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!confirm('Cancel this booking?')) return;
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/bookings/${bookingId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchData();
+        alert('Booking cancelled');
+      }
+    } catch (error) {
+      alert('Failed to cancel');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Fitness Classes</h1>
-          <p className="text-gray-600 mt-1">Join live classes with expert instructors</p>
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Fitness Classes</h1>
+
+        <div className="bg-white rounded-xl p-1 inline-flex">
+          <button onClick={() => setActiveTab('available')} className={`px-6 py-2 rounded-lg ${activeTab === 'available' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}>
+            Available
+          </button>
+          <button onClick={() => setActiveTab('my-classes')} className={`px-6 py-2 rounded-lg ${activeTab === 'my-classes' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}>
+            My Classes ({myBookings.length})
+          </button>
         </div>
 
-        {/* My Classes Section */}
-        {myClasses.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              My Classes
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {myClasses.map((cls) => (
-                <div
-                  key={cls.id}
-                  className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold mb-2">{cls.name}</h3>
-                      <p className="text-blue-100 text-sm">with {cls.instructor}</p>
-                    </div>
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
-                      Joined
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-blue-100">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm">{cls.time} • {cls.duration}</span>
-                    </div>
-                  </div>
-
+        {activeTab === 'available' ? (
+          loading ? (
+            <div className="text-center py-12">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {availableClasses.map((cls) => (
+                <div key={cls.schedule_id} className="bg-white rounded-xl shadow-sm border p-6">
+                  <h3 className="text-lg font-bold mb-1">{cls.class_name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">with {cls.trainer_name}</p>
+                  <p className="text-sm text-gray-600">{formatDate(cls.scheduled_date)}</p>
+                  <p className="text-sm text-gray-600 mb-4">{formatTime(cls.start_time)} - {formatTime(cls.end_time)}</p>
+                  <p className="text-sm text-gray-600 mb-4">{cls.spots_available} / {cls.max_capacity} spots</p>
                   <button
-                    onClick={() => toggleJoinClass(cls.id)}
-                    className="w-full px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 rounded-xl font-semibold transition-all duration-200"
+                    onClick={() => handleBookClass(cls.schedule_id)}
+                    disabled={cls.spots_available === 0}
+                    className={`w-full py-3 rounded-xl font-semibold ${cls.spots_available === 0 ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white'}`}
                   >
-                    Leave Class
+                    {cls.spots_available === 0 ? 'Full' : 'Book Class'}
                   </button>
                 </div>
               ))}
             </div>
+          )
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {myBookings.map((booking) => (
+              <div key={booking.booking_id} className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl p-6 text-white">
+                <h3 className="text-xl font-bold mb-1">{booking.class_name}</h3>
+                <p className="text-sm mb-2">with {booking.trainer_name}</p>
+                <p className="text-sm">{formatDate(booking.scheduled_date)}</p>
+                <p className="text-sm mb-4">{formatTime(booking.start_time)}</p>
+                {booking.booking_status === 'confirmed' && (
+                  <button onClick={() => handleCancelBooking(booking.booking_id)} className="w-full py-2 bg-white/20 rounded-xl">
+                    Cancel Booking
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
-
-        {/* Available Classes Section */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Available Classes
-          </h2>
-          
-          {availableClasses.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">All Caught Up!</h3>
-              <p className="text-gray-600">You've joined all available classes. Check back later for new sessions.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableClasses.map((cls) => (
-                <div
-                  key={cls.id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                >
-                  {/* Card Header */}
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-100">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-bold text-gray-900 leading-tight">{cls.name}</h3>
-                      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${getDifficultyColor(cls.difficulty)}`}>
-                        {cls.difficulty}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">with {cls.instructor}</p>
-                  </div>
-
-                  {/* Card Body */}
-                  <div className="p-6 space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center text-gray-600">
-                        <svg className="w-5 h-5 mr-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-sm font-medium">{cls.time}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-gray-600">
-                        <svg className="w-5 h-5 mr-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span className="text-sm font-medium">{cls.duration}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => toggleJoinClass(cls.id)}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-                    >
-                      Join Class
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Info Card */}
-        <div className="bg-gradient-to-r from-green-400 to-teal-500 rounded-2xl p-6 text-white shadow-lg">
-          <div>
-            <h3 className="text-xl font-bold mb-2">Class Tips</h3>
-            <ul className="space-y-1 text-green-50">
-              <li>• Join classes 5 minutes early to warm up</li>
-              <li>• Keep your water bottle handy</li>
-              <li>• Listen to your body and take breaks when needed</li>
-            </ul>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );
