@@ -22,7 +22,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+ ../.vscode/
 *~
+
 
 # Testing
 coverage/
