@@ -11,8 +11,7 @@
     "seed-users": "node src/seed-default-user.js",
     "seed-gyms": "node src/seed-gyms.js",
     "seed-classes": "node src/seed-classes.js",
-    "seed-workouts": "node src/seed-workouts.js",
-    "seed-progress": "node src/seed-progress.js"
+    "seed-workouts": "node src/seed-workouts.js"
   },
   "keywords": ["fitness", "api", "express"],
   "author": "",

@@ -3,38 +3,119 @@
  * Page for visualizing fitness progress and achievements
  */
 
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { progressStats } from '../../data/mockData';
 
 const MemberProgress = () => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const userId = localStorage.getItem('userId');
+  const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    fetchProgressData();
+  }, []);
+
+  const fetchProgressData = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`http://localhost:3001/api/users/${userId}/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+
+      const data = await response.json();
+      setStats(data.data);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching progress data:', err);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-xl text-gray-600">Loading progress data...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const monthlyWorkoutsGoal = 35;
+  const monthlyClassesGoal = 10;
+  const monthlyCaloriesGoal = 14000;
+
   const progressData = [
     {
       label: 'Workouts Completed',
-      current: progressStats.workoutsCompleted,
-      goal: progressStats.workoutsGoal,
+      current: stats?.totalWorkouts || 0,
+      goal: monthlyWorkoutsGoal,
       color: 'from-blue-500 to-blue-600',
     },
     {
       label: 'Classes Attended',
-      current: progressStats.classesAttended,
-      goal: progressStats.classesGoal,
+      current: stats?.totalClassesAttended || 0,
+      goal: monthlyClassesGoal,
       color: 'from-purple-500 to-purple-600',
     },
     {
       label: 'Calories Goal',
-      current: progressStats.caloriesBurned,
-      goal: progressStats.caloriesGoal,
+      current: stats?.caloriesBurned || 0,
+      goal: monthlyCaloriesGoal,
       color: 'from-orange-500 to-red-600',
     },
   ];
 
   const achievements = [
-    { id: 1, title: 'First Workout', description: 'Completed your first workout', unlocked: true },
-    { id: 2, title: 'Week Warrior', description: '7 day workout streak', unlocked: true },
-    { id: 3, title: 'Class Champion', description: 'Attended 5 classes', unlocked: true },
-    { id: 4, title: 'Iron Will', description: 'Complete 50 workouts', unlocked: false },
-    { id: 5, title: 'Calorie Crusher', description: 'Burn 20,000 calories', unlocked: false },
-    { id: 6, title: 'Perfect Month', description: '30 day workout streak', unlocked: false },
+    { 
+      id: 1, 
+      title: 'First Workout', 
+      description: 'Completed your first workout', 
+      unlocked: (stats?.totalWorkouts || 0) >= 1 
+    },
+    { 
+      id: 2, 
+      title: 'Week Warrior', 
+      description: '7 day workout streak', 
+      unlocked: (stats?.totalWorkouts || 0) >= 7 
+    },
+    { 
+      id: 3, 
+      title: 'Class Champion', 
+      description: 'Attended 5 classes', 
+      unlocked: (stats?.totalClassesAttended || 0) >= 5 
+    },
+    { 
+      id: 4, 
+      title: 'Iron Will', 
+      description: 'Complete 50 workouts', 
+      unlocked: (stats?.totalWorkouts || 0) >= 50,
+      progress: `${stats?.totalWorkouts || 0}/50`
+    },
+    { 
+      id: 5, 
+      title: 'Calorie Crusher', 
+      description: 'Burn 20,000 calories', 
+      unlocked: (stats?.caloriesBurned || 0) >= 20000,
+      progress: `${stats?.caloriesBurned || 0}/20000`
+    },
+    { 
+      id: 6, 
+      title: 'Perfect Month', 
+      description: '30 day workout streak', 
+      unlocked: (stats?.totalWorkouts || 0) >= 30,
+      progress: `${stats?.totalWorkouts || 0}/30`
+    },
   ];
 
   const getPercentage = (current, goal) => Math.min((current / goal) * 100, 100);
@@ -52,7 +133,11 @@ const MemberProgress = () => {
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-2xl p-8 text-white shadow-xl">
           <div>
             <h2 className="text-3xl font-bold mb-2">You're on track!</h2>
-            <p className="text-green-50 text-lg">You're on pace to beat last week's stats by 15%. Keep pushing!</p>
+            <p className="text-green-50 text-lg">
+              {stats?.totalSessions > 0 
+                ? `You've completed ${stats.totalSessions} sessions! Keep pushing!`
+                : "Start your first workout to begin tracking progress!"}
+            </p>
           </div>
         </div>
 
@@ -98,22 +183,28 @@ const MemberProgress = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">This Week</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl font-bold mb-1">5</div>
+              <div className="text-3xl font-bold mb-1">
+                {Math.ceil((stats?.totalSessions || 0) * 0.71)}
+              </div>
               <div className="text-blue-100 text-sm">Days Active</div>
             </div>
 
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl font-bold mb-1">4.5</div>
+              <div className="text-3xl font-bold mb-1">
+                {((stats?.totalDuration || 0) / 60).toFixed(1)}
+              </div>
               <div className="text-green-100 text-sm">Hours Trained</div>
             </div>
 
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl font-bold mb-1">8</div>
+              <div className="text-3xl font-bold mb-1">{stats?.totalWorkouts || 0}</div>
               <div className="text-purple-100 text-sm">Workouts Done</div>
             </div>
 
             <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
-              <div className="text-3xl font-bold mb-1">2,840</div>
+              <div className="text-3xl font-bold mb-1">
+                {(stats?.caloriesBurned || 0).toLocaleString()}
+              </div>
               <div className="text-orange-100 text-sm">Calories Burned</div>
             </div>
           </div>
@@ -147,6 +238,11 @@ const MemberProgress = () => {
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       <span>Unlocked</span>
+                    </div>
+                  )}
+                  {!achievement.unlocked && achievement.progress && (
+                    <div className="mt-3 text-xs text-gray-500 font-semibold">
+                      {achievement.progress}
                     </div>
                   )}
                 </div>

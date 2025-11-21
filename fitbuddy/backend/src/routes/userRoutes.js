@@ -17,7 +17,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { findUserById, updateUser, deleteUser, updateUserPassword } from '../db/users.js';
-import { getUserSessionStats } from '../data/mockData.js';
+import { getUserStats, getUserProgressHistory, createProgressEntry } from '../db/stats.js';
 import requireAuth from '../middleware/requireAuth.js';
 
 const router = express.Router();
@@ -308,16 +308,16 @@ router.get('/:id/stats', requireAuth, async (req, res) => {
       });
     }
 
-    // Get session stats
-    const sessionStats = getUserSessionStats(userId);
+    // Get real statistics from database
+    const stats = await getUserStats(userId);
 
     res.status(200).json({
       success: true,
       message: 'User statistics retrieved successfully',
       data: {
-        ...sessionStats,
+        ...stats,
         memberSince: user.createdAt || new Date().toISOString(),
-        lastWorkout: user.lastWorkout || null,
+        lastWorkout: stats.lastWorkoutDate || null,
       },
     });
   } catch (error) {
@@ -403,6 +403,147 @@ router.put('/:id/password', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error changing password',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * ========================================
+ * GET /api/users/:id/progress
+ * ========================================
+ * 
+ * Get user progress history (Protected)
+ * Returns measurements over time for tracking body composition changes
+ * 
+ * Query Parameters:
+ * - limit: Number of entries to return (default: 10)
+ * 
+ * Response (200 OK):
+ * {
+ *   "success": true,
+ *   "message": "Progress history retrieved successfully",
+ *   "data": [
+ *     {
+ *       "id": 1,
+ *       "measurement_date": "2025-11-20",
+ *       "weight_kg": 75.5,
+ *       "body_fat_percentage": 18.5,
+ *       "muscle_mass_kg": 32.0,
+ *       "chest_cm": 98.0,
+ *       "waist_cm": 82.0,
+ *       "hips_cm": 96.0,
+ *       "biceps_cm": 35.0,
+ *       "thighs_cm": 58.0,
+ *       "notes": "Feeling stronger"
+ *     }
+ *   ]
+ * }
+ */
+router.get('/:id/progress', requireAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const currentUser = req.user;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Check if user is accessing their own progress or is an admin
+    if (currentUser.id !== userId && currentUser.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only view your own progress',
+      });
+    }
+
+    // Check if user exists
+    const user = await findUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Get progress history from database
+    const progressHistory = await getUserProgressHistory(userId, limit);
+
+    res.status(200).json({
+      success: true,
+      message: 'Progress history retrieved successfully',
+      data: progressHistory,
+    });
+  } catch (error) {
+    console.error('Error retrieving progress history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving progress history',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * ========================================
+ * POST /api/users/:id/progress
+ * ========================================
+ * 
+ * Create a new progress entry (Protected)
+ * Allows users to log their body measurements
+ * 
+ * Request Body:
+ * {
+ *   "weight_kg": 75.5,
+ *   "body_fat_percentage": 18.5,
+ *   "muscle_mass_kg": 32.0,
+ *   "chest_cm": 98.0,
+ *   "waist_cm": 82.0,
+ *   "hips_cm": 96.0,
+ *   "biceps_cm": 35.0,
+ *   "thighs_cm": 58.0,
+ *   "notes": "Monthly check-in"
+ * }
+ * 
+ * Response (201 Created):
+ * {
+ *   "success": true,
+ *   "message": "Progress entry created successfully",
+ *   "data": { ... }
+ * }
+ */
+router.post('/:id/progress', requireAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const currentUser = req.user;
+
+    // Check if user is creating their own progress entry
+    if (currentUser.id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only create progress entries for yourself',
+      });
+    }
+
+    // Check if user exists
+    const user = await findUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Create progress entry
+    const progressEntry = await createProgressEntry(userId, req.body);
+
+    res.status(201).json({
+      success: true,
+      message: 'Progress entry created successfully',
+      data: progressEntry,
+    });
+  } catch (error) {
+    console.error('Error creating progress entry:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating progress entry',
       error: error.message,
     });
   }
