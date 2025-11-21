@@ -8,6 +8,10 @@ sleep 5
 echo "Seeding gyms..."
 npm run seed-gyms || echo "Gyms already seeded or seeding failed, continuing..."
 
+# Seed workouts for member@gmail.com (ignore errors if already seeded)
+echo "Seeding workouts..."
+npm run seed-workouts || echo "Workouts already seeded or seeding failed, continuing..."
+
 # Start the server
 echo "Starting server..."
 npm run dev

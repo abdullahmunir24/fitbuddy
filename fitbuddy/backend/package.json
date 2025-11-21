@@ -8,7 +8,8 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "seed-user": "node src/seed-default-user.js",
-    "seed-gyms": "node src/seed-gyms.js"
+    "seed-gyms": "node src/seed-gyms.js",
+    "seed-workouts": "node src/seed-workouts.js"
   },
   "keywords": ["fitness", "api", "express"],
   "author": "",
