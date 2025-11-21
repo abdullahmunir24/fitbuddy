@@ -34,6 +34,7 @@ import sessionRoutes from './routes/sessionRoutes.js';
 import gymRoutes from './routes/gymRoutes.js';
 import classRoutes from './routes/classRoutes.js';
 import trainerClientRoutes from './routes/trainerClientRoutes.js';
+import progressRoutes from './routes/progressRoutes.js';
 
 
 /**
@@ -259,6 +260,17 @@ app.use('/api/classes', classRoutes);
  * - DELETE /api/trainer-clients/:id - Remove client
  */
 app.use('/api/trainer-clients', trainerClientRoutes);
+
+/**
+ * Progress Analytics routes
+ * All progress and analytics endpoints under /api/progress
+ * 
+ * Available endpoints:
+ * - GET /api/progress/workouts - Get workout statistics
+ * - GET /api/progress/exercises - Get exercise statistics
+ * - GET /api/progress/overview - Get progress overview
+ */
+app.use('/api/progress', progressRoutes);
 
 /**
  * =====================================
