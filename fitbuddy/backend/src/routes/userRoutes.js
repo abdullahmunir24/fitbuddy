@@ -408,4 +408,136 @@ router.put('/:id/password', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * ========================================
+ * GET /api/users/:id/classes
+ * ========================================
+ * 
+ * Get available classes for a user (member view)
+ * Shows all classes created by trainers that the member can join
+ * 
+ * Query Parameters:
+ * - trainer_id: Filter by specific trainer (optional)
+ * - class_type: Filter by class type (optional)
+ * - difficulty_level: Filter by difficulty (optional)
+ * - gym_id: Filter by gym (optional)
+ * 
+ * Response (200 OK):
+ * {
+ *   "success": true,
+ *   "message": "Available classes retrieved successfully",
+ *   "data": [
+ *     {
+ *       "id": 1,
+ *       "class_name": "Yoga Basics",
+ *       "description": "Beginner yoga for flexibility",
+ *       "trainer": {
+ *         "id": 5,
+ *         "name": "Jane Smith",
+ *         "specializations": ["yoga", "pilates"]
+ *       },
+ *       "gym": {
+ *         "id": 1,
+ *         "name": "FitHub Kelowna"
+ *       },
+ *       "class_type": "yoga",
+ *       "difficulty_level": "beginner",
+ *       "max_capacity": 20,
+ *       "duration_minutes": 60,
+ *       "price": 0.00,
+ *       "schedules": [
+ *         {
+ *           "id": 1,
+ *           "scheduled_date": "2025-11-25",
+ *           "start_time": "10:00:00",
+ *           "end_time": "11:00:00",
+ *           "current_capacity": 15,
+ *           "available_spots": 5,
+ *           "status": "scheduled"
+ *         }
+ *       ]
+ *     }
+ *   ],
+ *   "count": 1
+ * }
+ */
+router.get('/:id/classes', requireAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { trainer_id, class_type, difficulty_level, gym_id } = req.query;
+
+    // Verify user is viewing their own classes or is admin
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only view your own available classes',
+      });
+    }
+
+    // Build filter options
+    const filters = {};
+    if (trainer_id) filters.trainer_id = parseInt(trainer_id);
+    if (class_type) filters.class_type = class_type;
+    if (difficulty_level) filters.difficulty_level = difficulty_level;
+    if (gym_id) filters.gym_id = parseInt(gym_id);
+
+    // Query available classes from database
+    const query = `
+      SELECT 
+        fc.id,
+        fc.class_name,
+        fc.description,
+        fc.class_type,
+        fc.difficulty_level,
+        fc.max_capacity,
+        fc.duration_minutes,
+        fc.price,
+        fc.trainer_id,
+        u.full_name as trainer_name,
+        g.id as gym_id,
+        g.name as gym_name,
+        g.city as gym_city,
+        json_agg(
+          json_build_object(
+            'id', cs.id,
+            'scheduled_date', cs.scheduled_date,
+            'start_time', cs.start_time,
+            'end_time', cs.end_time,
+            'current_capacity', cs.current_capacity,
+            'available_spots', fc.max_capacity - COALESCE(cs.current_capacity, 0),
+            'status', cs.status
+          ) ORDER BY cs.scheduled_date, cs.start_time
+        ) as schedules
+      FROM fitness_classes fc
+      LEFT JOIN users u ON fc.trainer_id = u.id
+      LEFT JOIN gyms g ON fc.gym_id = g.id
+      LEFT JOIN class_schedules cs ON fc.id = cs.class_id AND cs.status != 'cancelled'
+      WHERE fc.is_active = true
+        ${trainer_id ? `AND fc.trainer_id = $${Object.keys(filters).indexOf('trainer_id') + 1}` : ''}
+        ${class_type ? `AND fc.class_type = $${Object.keys(filters).indexOf('class_type') + 1}` : ''}
+        ${difficulty_level ? `AND fc.difficulty_level = $${Object.keys(filters).indexOf('difficulty_level') + 1}` : ''}
+        ${gym_id ? `AND fc.gym_id = $${Object.keys(filters).indexOf('gym_id') + 1}` : ''}
+      GROUP BY fc.id, u.id, g.id
+      ORDER BY fc.class_name ASC
+    `;
+
+    const filterValues = Object.values(filters);
+    const result = await pool.query(query, filterValues);
+
+    res.status(200).json({
+      success: true,
+      message: 'Available classes retrieved successfully',
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error('Error retrieving available classes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving available classes',
+      error: error.message,
+    });
+  }
+});
+
 export default router;

@@ -31,6 +31,15 @@ async function seedClasses() {
     const trainers = trainersResult.rows;
     console.log(`Found ${trainers.length} trainers`);
 
+    // Get available gyms
+    const gymsResult = await client.query('SELECT id, name FROM gyms LIMIT 2');
+    if (gymsResult.rows.length === 0) {
+      console.log('No gyms found. Please seed gyms first.');
+      return;
+    }
+    const gyms = gymsResult.rows;
+    console.log(`Found ${gyms.length} gyms`);
+
     // Sample classes for each trainer
     const classTemplates = [
       {
@@ -103,14 +112,16 @@ async function seedClasses() {
           classId = existingClass.rows[0].id;
           console.log(`  - Class "${classTemplate.class_name}" already exists`);
         } else {
-          // Create new class
+          // Create new class with gym assignment
+          const gymIndex = trainers.indexOf(trainer) % gyms.length;
           const classResult = await client.query(
             `INSERT INTO fitness_classes 
-            (trainer_id, class_name, class_type, difficulty_level, max_capacity, duration_minutes, description)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            (trainer_id, gym_id, class_name, class_type, difficulty_level, max_capacity, duration_minutes, description)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id`,
             [
               trainer.id,
+              gyms[gymIndex].id,
               classTemplate.class_name,
               classTemplate.class_type,
               classTemplate.difficulty_level,
@@ -124,11 +135,11 @@ async function seedClasses() {
           console.log(`  ✓ Created class: ${classTemplate.class_name}`);
         }
 
-        // Create schedules for the next 7 days
+        // Create schedules for the next 3 days
         const schedulesToCreate = [];
         const today = new Date();
 
-        for (let i = 1; i <= 7; i++) {
+        for (let i = 1; i <= 3; i++) {
           const scheduleDate = new Date(today);
           scheduleDate.setDate(today.getDate() + i);
 
@@ -198,13 +209,13 @@ async function seedClasses() {
       for (const schedule of upcomingSchedules.rows) {
         // Check if booking already exists
         const existingBooking = await client.query(
-          'SELECT id FROM class_bookings WHERE member_id = $1 AND schedule_id = $2',
+          'SELECT id FROM class_bookings WHERE user_id = $1 AND schedule_id = $2',
           [memberId, schedule.id]
         );
 
         if (existingBooking.rows.length === 0) {
           await client.query(
-            `INSERT INTO class_bookings (schedule_id, member_id, booking_status)
+            `INSERT INTO class_bookings (schedule_id, user_id, booking_status)
             VALUES ($1, $2, 'confirmed')`,
             [schedule.id, memberId]
           );

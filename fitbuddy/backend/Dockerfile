@@ -15,6 +15,9 @@ RUN npm install
 # Copy application code
 COPY . .
 
+# Make startup script executable
+RUN chmod +x src/startup.sh
+
 # Stage 2: Production stage
 FROM node:22-alpine
 
@@ -40,5 +43,5 @@ EXPOSE 3001
 # Use dumb-init to handle signals
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "src/index.js"]
+# Start via startup script (handles seeding then starts server)
+CMD ["sh", "src/startup.sh"]
