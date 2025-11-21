@@ -33,6 +33,7 @@ import exerciseRoutes from './routes/exerciseRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import gymRoutes from './routes/gymRoutes.js';
 import classRoutes from './routes/classRoutes.js';
+import trainerClientRoutes from './routes/trainerClientRoutes.js';
 
 
 /**
@@ -239,6 +240,25 @@ app.use('/api/gyms', gymRoutes);
  * - DELETE /api/classes/:id - Delete a class
  */
 app.use('/api/classes', classRoutes);
+
+/**
+ * Trainer-Client Routes
+ * Base path: /api/trainer-clients
+ * 
+ * Member endpoints:
+ * - GET /api/trainer-clients/trainers - Get available trainers
+ * - POST /api/trainer-clients/request - Send trainer request
+ * - GET /api/trainer-clients/my-trainer - Get current trainer
+ * - GET /api/trainer-clients/my-requests - Get pending requests
+ * 
+ * Trainer endpoints:
+ * - GET /api/trainer-clients/requests - Get pending requests
+ * - GET /api/trainer-clients/clients - Get accepted clients
+ * - POST /api/trainer-clients/accept/:id - Accept request
+ * - POST /api/trainer-clients/reject/:id - Reject request
+ * - DELETE /api/trainer-clients/:id - Remove client
+ */
+app.use('/api/trainer-clients', trainerClientRoutes);
 
 /**
  * =====================================

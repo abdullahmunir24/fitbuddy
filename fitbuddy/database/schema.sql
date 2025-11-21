@@ -60,6 +60,18 @@ CREATE TABLE IF NOT EXISTS trainer_profiles (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Trainer-client relationships - Manages trainer-client requests and relationships
+CREATE TABLE IF NOT EXISTS trainer_client_requests (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    trainer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TIMESTAMP,
+    UNIQUE(member_id, trainer_id)
+);
+
 -- ========================================
 -- 2. GYMS & FACILITIES
 -- ========================================
@@ -394,6 +406,12 @@ CREATE TABLE IF NOT EXISTS system_settings (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+
+-- Trainer-client requests indexes
+CREATE INDEX IF NOT EXISTS idx_trainer_requests_trainer ON trainer_client_requests(trainer_id, status);
+CREATE INDEX IF NOT EXISTS idx_trainer_requests_member ON trainer_client_requests(member_id, status);
+CREATE INDEX IF NOT EXISTS idx_trainer_requests_status ON trainer_client_requests(status);
 
 -- Gyms table indexes
 CREATE INDEX IF NOT EXISTS idx_gyms_city ON gyms(city);
