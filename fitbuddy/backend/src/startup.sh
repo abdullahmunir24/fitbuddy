@@ -23,6 +23,18 @@ node src/seed-classes.js
 echo "✅ Classes seeding completed"
 sleep 1
 
+# Seed workouts
+echo "🏋️ Seeding workouts..."
+node src/seed-workouts.js
+echo "✅ Workouts seeding completed"
+sleep 1
+
+# Seed progress
+echo "📊 Seeding progress..."
+node src/seed-progress.js
+echo "✅ Progress seeding completed"
+sleep 1
+
 # Start the server
 echo "🚀 Starting server..."
 npm run dev
