@@ -360,16 +360,19 @@ async function insertWorkouts(userId, workouts) {
  */
 async function seedWorkouts() {
   try {
-    console.log('🌱 Starting workout seed for member@gmail.com...\n');
+    // Seed for member@gmail.com (the default test user)
+    const targetEmail = 'member@gmail.com';
+    console.log(`🌱 Starting workout seed for ${targetEmail}...\n`);
     
     // Get user ID for member@gmail.com
     const userResult = await pool.query(
       'SELECT id, email, full_name FROM users WHERE email = $1',
-      ['member@gmail.com']
+      [targetEmail]
     );
     
     if (userResult.rows.length === 0) {
-      console.error('❌ User member@gmail.com not found. Please ensure the user exists first.');
+      console.error(`❌ User ${targetEmail} not found. Please ensure the user exists first.`);
+      console.error('   The user should be auto-created on server startup.');
       return;
     }
     
