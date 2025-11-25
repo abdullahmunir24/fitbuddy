@@ -3,221 +3,291 @@
  * Page for trainers to view and manage their clients
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 
 const TrainerClients = () => {
-  const [clients] = useState([
-    { 
-      id: 1, 
-      name: 'Sarah Johnson', 
-      email: 'sarah.j@email.com',
-      joinDate: 'Jan 15, 2024',
-      sessionsCompleted: 24,
-      lastSession: '2 days ago',
-      status: 'active',
-      goal: 'Weight Loss',
-      progress: 75
-    },
-    { 
-      id: 2, 
-      name: 'Mike Chen', 
-      email: 'mike.chen@email.com',
-      joinDate: 'Feb 3, 2024',
-      sessionsCompleted: 18,
-      lastSession: '1 day ago',
-      status: 'active',
-      goal: 'Muscle Gain',
-      progress: 60
-    },
-    { 
-      id: 3, 
-      name: 'Emma Davis', 
-      email: 'emma.d@email.com',
-      joinDate: 'Dec 20, 2023',
-      sessionsCompleted: 45,
-      lastSession: 'Today',
-      status: 'active',
-      goal: 'General Fitness',
-      progress: 90
-    },
-    { 
-      id: 4, 
-      name: 'James Wilson', 
-      email: 'j.wilson@email.com',
-      joinDate: 'Mar 1, 2024',
-      sessionsCompleted: 12,
-      lastSession: '3 days ago',
-      status: 'active',
-      goal: 'Strength Training',
-      progress: 45
-    },
-    { 
-      id: 5, 
-      name: 'Lisa Anderson', 
-      email: 'lisa.a@email.com',
-      joinDate: 'Jan 28, 2024',
-      sessionsCompleted: 32,
-      lastSession: '1 day ago',
-      status: 'active',
-      goal: 'Endurance',
-      progress: 80
-    },
-  ]);
+  const [clients, setClients] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('clients');
 
-  const [filter, setFilter] = useState('all');
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const filteredClients = filter === 'all' 
-    ? clients 
-    : clients.filter(client => client.status === filter);
+  const fetchData = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+
+      const [clientsRes, requestsRes] = await Promise.all([
+        fetch(`${apiUrl}/api/trainer-clients/clients`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }),
+        fetch(`${apiUrl}/api/trainer-clients/requests`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }),
+      ]);
+
+      const clientsData = await clientsRes.json();
+      const requestsData = await requestsRes.json();
+
+      if (clientsData.success) {
+        setClients(clientsData.data);
+      }
+
+      if (requestsData.success) {
+        setPendingRequests(requestsData.data);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/trainer-clients/accept/${requestId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Client request accepted!');
+        await fetchData();
+      } else {
+        alert(data.message || 'Failed to accept request');
+      }
+    } catch (error) {
+      alert('Failed to accept request');
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    if (!confirm('Reject this client request?')) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/trainer-clients/reject/${requestId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Request rejected');
+        await fetchData();
+      } else {
+        alert(data.message || 'Failed to reject request');
+      }
+    } catch (error) {
+      alert('Failed to reject request');
+    }
+  };
+
+  const handleRemoveClient = async (relationshipId) => {
+    if (!confirm('Remove this client? They will need to send a new request to become your client again.')) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/trainer-clients/${relationshipId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Client removed');
+        await fetchData();
+      } else {
+        alert(data.message || 'Failed to remove client');
+      }
+    } catch (error) {
+      alert('Failed to remove client');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      year: 'numeric',
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
   const totalClients = clients.length;
-  const activeClients = clients.filter(c => c.status === 'active').length;
-  const totalSessions = clients.reduce((sum, c) => sum + c.sessionsCompleted, 0);
-  const avgProgress = Math.round(clients.reduce((sum, c) => sum + c.progress, 0) / clients.length);
+  const totalBookings = clients.reduce((sum, c) => sum + parseInt(c.total_bookings || 0), 0);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header Section */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Clients</h1>
-          <p className="text-gray-600 mt-1">Track and manage your client progress</p>
+          <p className="text-gray-600 mt-1">Track and manage your client relationships</p>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
             <div className="text-3xl font-bold mb-1">{totalClients}</div>
             <div className="text-blue-100">Total Clients</div>
           </div>
 
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{activeClients}</div>
-            <div className="text-green-100">Active Clients</div>
+            <div className="text-3xl font-bold mb-1">{totalBookings}</div>
+            <div className="text-green-100">Total Bookings</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{totalSessions}</div>
-            <div className="text-purple-100">Total Sessions</div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{avgProgress}%</div>
-            <div className="text-orange-100">Avg Progress</div>
+            <div className="text-3xl font-bold mb-1">{pendingRequests.length}</div>
+            <div className="text-purple-100">Pending Requests</div>
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
-          <div className="flex space-x-2">
+        <div className="bg-white rounded-xl shadow-sm border">
+          <div className="flex border-b">
             <button
-              onClick={() => setFilter('all')}
-              className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100'
+              onClick={() => setActiveTab('clients')}
+              className={`px-6 py-3 font-medium transition-colors ${
+                activeTab === 'clients'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              All Clients ({totalClients})
+              My Clients ({totalClients})
             </button>
             <button
-              onClick={() => setFilter('active')}
-              className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                filter === 'active'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100'
+              onClick={() => setActiveTab('requests')}
+              className={`px-6 py-3 font-medium transition-colors relative ${
+                activeTab === 'requests'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Active ({activeClients})
+              Pending Requests ({pendingRequests.length})
+              {pendingRequests.length > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
             </button>
           </div>
-        </div>
 
-        {/* Clients Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClients.map((client) => (
-            <div
-              key={client.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-            >
-              {/* Card Header */}
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-blue-600 font-bold text-2xl">
-                    {client.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 text-white">
-                    <h3 className="text-xl font-bold">{client.name}</h3>
-                    <p className="text-blue-100 text-sm">{client.email}</p>
-                  </div>
+          <div className="p-6">
+            {loading ? (
+              <div className="text-center py-12 text-gray-600">Loading...</div>
+            ) : activeTab === 'clients' ? (
+              clients.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 text-5xl mb-4">👥</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No clients yet</h3>
+                  <p className="text-gray-600">
+                    When members request you as their trainer and you accept, they'll appear here.
+                  </p>
                 </div>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-6 space-y-4">
-                {/* Goal */}
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Goal</p>
-                  <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium">
-                    {client.goal}
-                  </span>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Sessions</p>
-                    <p className="text-2xl font-bold text-gray-900">{client.sessionsCompleted}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Last Session</p>
-                    <p className="text-sm font-semibold text-gray-900">{client.lastSession}</p>
-                  </div>
-                </div>
-
-                {/* Progress */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Progress</p>
-                    <p className="text-sm font-bold text-gray-900">{client.progress}%</p>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {clients.map((client) => (
                     <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${client.progress}%` }}
-                    ></div>
-                  </div>
-                </div>
+                      key={client.member_id}
+                      className="bg-white border rounded-xl p-5 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                            {client.member_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{client.member_name}</h3>
+                            <p className="text-sm text-gray-500">{client.member_email}</p>
+                          </div>
+                        </div>
+                      </div>
 
-                {/* Member Since */}
-                <div className="pt-3 border-t border-gray-100">
-                  <p className="text-xs text-gray-500">Member since {client.joinDate}</p>
-                </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Client Since:</span>
+                          <span className="font-medium text-gray-900">
+                            {formatDate(client.accepted_at)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Total Bookings:</span>
+                          <span className="font-medium text-gray-900">{client.total_bookings || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Recent (30d):</span>
+                          <span className="font-medium text-gray-900">{client.recent_bookings || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Last Booking:</span>
+                          <span className="font-medium text-gray-900">
+                            {formatDate(client.last_booking_date)}
+                          </span>
+                        </div>
+                      </div>
 
-                {/* Actions */}
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button className="px-4 py-2 bg-blue-50 text-blue-600 font-semibold rounded-xl hover:bg-blue-100 transition-colors duration-200">
-                    View Details
-                  </button>
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors duration-200">
-                    Message
-                  </button>
+                      <button
+                        onClick={() => handleRemoveClient(client.relationship_id)}
+                        className="w-full py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Remove Client
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              )
+            ) : (
+              pendingRequests.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 text-5xl mb-4">📬</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No pending requests</h3>
+                  <p className="text-gray-600">You'll see new client requests here.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="bg-gray-50 border border-gray-200 rounded-xl p-5 flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-14 h-14 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                          {request.member_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 text-lg">{request.member_name}</h3>
+                          <p className="text-sm text-gray-600">{request.member_email}</p>
+                          {request.message && (
+                            <p className="text-sm text-gray-700 mt-2 italic">"{request.message}"</p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Requested {formatDate(request.created_at)}
+                          </p>
+                        </div>
+                      </div>
 
-        {/* Info Banner */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-          <div>
-            <h3 className="text-xl font-bold mb-2">Client Management Tips</h3>
-            <ul className="space-y-1 text-blue-50">
-              <li>• Regular check-ins help maintain client motivation</li>
-              <li>• Track progress weekly to adjust training plans</li>
-              <li>• Celebrate milestones to keep clients engaged</li>
-            </ul>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAcceptRequest(request.id)}
+                          className="px-5 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleRejectRequest(request.id)}
+                          className="px-5 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>
@@ -226,4 +296,3 @@ const TrainerClients = () => {
 };
 
 export default TrainerClients;
-

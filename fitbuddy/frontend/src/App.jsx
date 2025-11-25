@@ -9,6 +9,7 @@ import MemberClasses from './pages/member/MemberClasses'
 import MemberProgress from './pages/member/MemberProgress'
 import MemberGyms from './pages/member/MemberGyms'
 import MemberProfile from './pages/member/MemberProfile'
+import MemberTrainer from './pages/member/MemberTrainer'
 import TrainerDashboard from './pages/trainer/TrainerDashboard'
 import TrainerClasses from './pages/trainer/TrainerClasses'
 import TrainerClients from './pages/trainer/TrainerClients'
@@ -29,6 +30,7 @@ function App() {
         <Route path="/member/classes" element={<MemberClasses />} />
         <Route path="/member/progress" element={<MemberProgress />} />
         <Route path="/member/gyms" element={<MemberGyms />} />
+        <Route path="/member/trainer" element={<MemberTrainer />} />
         <Route path="/member/profile" element={<MemberProfile />} />
         
         {/* Trainer Routes */}

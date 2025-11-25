@@ -24,6 +24,7 @@
 import 'dotenv/config'; // Load environment variables from .env file
 import express from 'express';
 import cors from 'cors';
+import bcrypt from 'bcryptjs';
 import pool from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -31,6 +32,10 @@ import workoutRoutes from './routes/workoutRoutes.js';
 import exerciseRoutes from './routes/exerciseRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import gymRoutes from './routes/gymRoutes.js';
+import classRoutes from './routes/classRoutes.js';
+import trainerClientRoutes from './routes/trainerClientRoutes.js';
+import progressRoutes from './routes/progressRoutes.js';
+
 
 /**
  * =====================================
@@ -206,19 +211,66 @@ app.use('/api/exercises', exerciseRoutes);
 app.use('/api/sessions', sessionRoutes);
 
 /**
- * Gym Finder routes
- * All gym discovery and management endpoints under /api/gyms
+ * Gym routes
+ * All gym finder and management endpoints under /api/gyms
  * 
  * Available endpoints:
- * - GET /api/gyms - Get all gyms (with location filtering)
+ * - GET /api/gyms - Get all gyms (with optional location filtering)
  * - GET /api/gyms/search - Search gyms
- * - GET /api/gyms/:id - Get specific gym
- * - POST /api/gyms - Create gym (admin only)
- * - PUT /api/gyms/:id - Update gym (admin only)
- * - DELETE /api/gyms/:id - Delete gym (admin only)
- * - GET /api/gyms/:id/facilities - Get gym facilities
+ * - GET /api/gyms/:id - Get specific gym (public)
+ * - POST /api/gyms - Create gym (protected, admin only)
+ * - PUT /api/gyms/:id - Update gym (protected, admin only)
+ * - DELETE /api/gyms/:id - Delete gym (protected, admin only)
  */
 app.use('/api/gyms', gymRoutes);
+
+/**
+ * Class routes
+ * All fitness class management endpoints under /api/classes
+ * 
+ * Available endpoints:
+ * - GET /api/classes - Get all available classes (members)
+ * - GET /api/classes/filters - Get filter options
+ * - GET /api/classes/my-bookings - Get member's bookings
+ * - POST /api/classes/book - Book a class
+ * - DELETE /api/classes/bookings/:id - Cancel a booking
+ * - GET /api/classes/trainer - Get trainer's classes
+ * - POST /api/classes - Create a class (trainers)
+ * - GET /api/classes/:id - Get class details
+ * - PUT /api/classes/:id - Update a class
+ * - DELETE /api/classes/:id - Delete a class
+ */
+app.use('/api/classes', classRoutes);
+
+/**
+ * Trainer-Client Routes
+ * Base path: /api/trainer-clients
+ * 
+ * Member endpoints:
+ * - GET /api/trainer-clients/trainers - Get available trainers
+ * - POST /api/trainer-clients/request - Send trainer request
+ * - GET /api/trainer-clients/my-trainer - Get current trainer
+ * - GET /api/trainer-clients/my-requests - Get pending requests
+ * 
+ * Trainer endpoints:
+ * - GET /api/trainer-clients/requests - Get pending requests
+ * - GET /api/trainer-clients/clients - Get accepted clients
+ * - POST /api/trainer-clients/accept/:id - Accept request
+ * - POST /api/trainer-clients/reject/:id - Reject request
+ * - DELETE /api/trainer-clients/:id - Remove client
+ */
+app.use('/api/trainer-clients', trainerClientRoutes);
+
+/**
+ * Progress Analytics routes
+ * All progress and analytics endpoints under /api/progress
+ * 
+ * Available endpoints:
+ * - GET /api/progress/workouts - Get workout statistics
+ * - GET /api/progress/exercises - Get exercise statistics
+ * - GET /api/progress/overview - Get progress overview
+ */
+app.use('/api/progress', progressRoutes);
 
 /**
  * =====================================
@@ -280,6 +332,67 @@ app.use((error, req, res, next) => {
  */
 
 /**
+ * Seed default users for testing
+ * Creates a member and trainer account if they don't exist
+ */
+const seedDefaultUsers = async () => {
+  const defaultUsers = [
+    {
+      username: 'member',
+      email: 'member@gmail.com',
+      password: 'member123',
+      full_name: 'Member User',
+      role: 'member',
+    },
+    {
+      username: 'trainer',
+      email: 'trainer@gmail.com',
+      password: 'trainer123',
+      full_name: 'Trainer User',
+      role: 'trainer',
+    },
+  ];
+
+  for (const user of defaultUsers) {
+    try {
+      // Check if user already exists
+      const checkQuery = 'SELECT id FROM users WHERE email = $1';
+      const checkResult = await pool.query(checkQuery, [user.email]);
+      
+      if (checkResult.rows.length > 0) {
+        console.log(`✅ Default ${user.role} user already exists: ${user.email}`);
+        continue;
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      
+      // Insert user
+      const insertQuery = `
+        INSERT INTO users (username, email, password_hash, full_name, role, is_active, email_verified)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, email, role
+      `;
+      
+      const values = [
+        user.username,
+        user.email,
+        hashedPassword,
+        user.full_name,
+        user.role,
+        true,  // is_active
+        true   // email_verified
+      ];
+      
+      const result = await pool.query(insertQuery, values);
+      console.log(`✅ Created default ${user.role} user: ${user.email}`);
+    } catch (error) {
+      console.error(`❌ Error creating default ${user.role} user:`, error.message);
+    }
+  }
+};
+
+/**
  * Start the Express server
  */
 const startServer = async () => {
@@ -287,6 +400,11 @@ const startServer = async () => {
     // Test database connection
     await pool.query('SELECT NOW()');
     console.log('✅ Database connection established');
+    
+    // Seed default users
+    console.log('\n🌱 Seeding default users...');
+    await seedDefaultUsers();
+    console.log('');
     
     app.listen(PORT, () => {
       console.log('\n========================================');

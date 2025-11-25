@@ -1,272 +1,411 @@
-/**
- * TrainerClasses.jsx
- * Page for trainers to manage their fitness classes
- */
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import Modal from '../../components/Modal';
 
 const TrainerClasses = () => {
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [classes, setClasses] = useState([
-    { id: 1, name: 'Morning Yoga', type: 'Yoga', schedule: 'Mon, Wed, Fri - 9:00 AM', duration: '60 min', capacity: 15, enrolled: 12, status: 'active' },
-    { id: 2, name: 'HIIT Bootcamp', type: 'HIIT', schedule: 'Tue, Thu - 6:00 AM', duration: '45 min', capacity: 20, enrolled: 20, status: 'active' },
-    { id: 3, name: 'Evening Spin', type: 'Cycling', schedule: 'Mon, Wed, Fri - 6:00 PM', duration: '50 min', capacity: 15, enrolled: 8, status: 'active' },
-    { id: 4, name: 'Strength Training', type: 'Strength', schedule: 'Tue, Thu, Sat - 5:00 PM', duration: '60 min', capacity: 20, enrolled: 15, status: 'active' },
-    { id: 5, name: 'Pilates Core', type: 'Pilates', schedule: 'Wed, Fri - 11:00 AM', duration: '45 min', capacity: 12, enrolled: 10, status: 'active' },
-  ]);
-
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [schedules, setSchedules] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState(null);
+  
   const [formData, setFormData] = useState({
-    name: '',
-    type: '',
-    schedule: '',
-    duration: '',
-    capacity: '',
+    class_name: '',
+    class_type: '',
+    difficulty_level: 'beginner',
+    max_capacity: '',
+    duration_minutes: '',
+    description: '',
   });
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const [scheduleFormData, setScheduleFormData] = useState({
+    scheduled_date: '',
+    start_time: '',
+    end_time: '',
+  });
+
+  useEffect(() => {
+    fetchClasses();
+  }, []);
+
+  const fetchClasses = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/trainer`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setClasses(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleCreateClass = async (e) => {
     e.preventDefault();
-    const newClass = {
-      id: classes.length + 1,
-      ...formData,
-      enrolled: 0,
-      status: 'active',
-    };
-    setClasses([newClass, ...classes]);
-    setIsModalOpen(false);
-    setFormData({ name: '', type: '', schedule: '', duration: '', capacity: '' });
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          ...formData,
+          max_capacity: parseInt(formData.max_capacity),
+          duration_minutes: parseInt(formData.duration_minutes),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchClasses();
+        setIsModalOpen(false);
+        setFormData({
+          class_name: '',
+          class_type: '',
+          difficulty_level: 'beginner',
+          max_capacity: '',
+          duration_minutes: '',
+          description: '',
+        });
+        alert('Class created successfully!');
+      } else {
+        alert(data.message || 'Failed to create class');
+      }
+    } catch (error) {
+      alert('Failed to create class');
+    }
   };
 
-  const getStatusColor = (enrolled, capacity) => {
-    const percentage = (enrolled / capacity) * 100;
-    if (percentage === 100) return 'bg-red-100 text-red-700';
-    if (percentage >= 75) return 'bg-yellow-100 text-yellow-700';
-    return 'bg-green-100 text-green-700';
+  const handleDeleteClass = async (classId) => {
+    if (!confirm('Delete this class?')) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/${classId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchClasses();
+        alert('Class deleted successfully!');
+      } else {
+        alert(data.message || 'Failed to delete class');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete class: ' + error.message);
+    }
+  };
+
+  const handleViewSchedules = async (classItem) => {
+    setSelectedClass(classItem);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/${classItem.id}/schedules`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSchedules(data.data);
+        setIsScheduleModalOpen(true);
+      }
+    } catch (error) {
+      alert('Failed to load schedules');
+    }
+  };
+
+  const handleCreateSchedule = async (e) => {
+    e.preventDefault();
+    if (!selectedClass) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/${selectedClass.id}/schedules`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(scheduleFormData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        handleViewSchedules(selectedClass);
+        setScheduleFormData({ scheduled_date: '', start_time: '', end_time: '' });
+        alert('Schedule created!');
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      alert('Failed to create schedule');
+    }
+  };
+
+  const handleViewBookings = async (scheduleId) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/classes/schedules/${scheduleId}/bookings`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setBookings(data.data);
+        setSelectedScheduleId(scheduleId);
+      }
+    } catch (error) {
+      alert('Failed to load bookings');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header Section */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Classes</h1>
-            <p className="text-gray-600 mt-1">Manage your fitness classes and schedules</p>
+            <p className="text-gray-600 mt-1">Manage your fitness classes</p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Create New Class</span>
+            + Create Class
           </button>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{classes.length}</div>
-            <div className="text-blue-100">Total Classes</div>
+        {loading ? (
+          <div className="text-center py-12">Loading...</div>
+        ) : classes.length === 0 ? (
+          <div className="bg-white rounded-xl p-12 text-center">
+            <h3 className="text-lg font-medium text-gray-900">No classes yet</h3>
+            <p className="text-gray-600 mt-2">Create your first class to get started</p>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {classes.map((cls) => (
+              <div key={cls.id} className="bg-white rounded-xl shadow-sm border p-6">
+                <h3 className="text-lg font-bold mb-2">{cls.class_name}</h3>
+                <p className="text-sm text-gray-600 mb-1">Type: {cls.class_type}</p>
+                <p className="text-sm text-gray-600 mb-1">Level: {cls.difficulty_level}</p>
+                <p className="text-sm text-gray-600 mb-1">Duration: {cls.duration_minutes} min</p>
+                <p className="text-sm text-gray-600 mb-4">Capacity: {cls.max_capacity}</p>
+                <p className="text-sm text-gray-600 mb-4">Schedules: {cls.schedule_count || 0}</p>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{classes.filter(c => c.status === 'active').length}</div>
-            <div className="text-purple-100">Active Classes</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleViewSchedules(cls)}
+                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                  >
+                    Schedules
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClass(cls.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
+        )}
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{classes.reduce((sum, c) => sum + c.enrolled, 0)}</div>
-            <div className="text-green-100">Total Enrolled</div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="text-3xl font-bold mb-1">{classes.reduce((sum, c) => sum + c.capacity, 0)}</div>
-            <div className="text-orange-100">Total Capacity</div>
-          </div>
-        </div>
-
-        {/* Classes Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Class Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Schedule</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Duration</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Enrollment</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {classes.map((classItem) => (
-                  <tr key={classItem.id} className="hover:bg-gray-50 transition-colors duration-200">
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-gray-900">{classItem.name}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
-                        {classItem.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">{classItem.schedule}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">{classItem.duration}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-semibold text-gray-900">{classItem.enrolled}/{classItem.capacity}</span>
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(classItem.enrolled / classItem.capacity) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-lg text-xs font-medium ${getStatusColor(classItem.enrolled, classItem.capacity)}`}>
-                        {classItem.enrolled === classItem.capacity ? 'Full' : 'Available'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Create Class Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Create New Class"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Class Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              placeholder="e.g., Morning Yoga"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Class Type</label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select type...</option>
-              <option value="Yoga">Yoga</option>
-              <option value="HIIT">HIIT</option>
-              <option value="Cycling">Cycling</option>
-              <option value="Strength">Strength</option>
-              <option value="Pilates">Pilates</option>
-              <option value="Boxing">Boxing</option>
-              <option value="Dance">Dance</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Schedule</label>
-            <input
-              type="text"
-              name="schedule"
-              value={formData.schedule}
-              onChange={handleInputChange}
-              required
-              placeholder="e.g., Mon, Wed, Fri - 9:00 AM"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        {/* Create Class Modal */}
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Class">
+          <form onSubmit={handleCreateClass} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Duration</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
               <input
                 type="text"
-                name="duration"
-                value={formData.duration}
-                onChange={handleInputChange}
                 required
-                placeholder="e.g., 60 min"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.class_name}
+                onChange={(e) => setFormData({ ...formData, class_name: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Capacity</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Class Type</label>
               <input
-                type="number"
-                name="capacity"
-                value={formData.capacity}
-                onChange={handleInputChange}
+                type="text"
                 required
-                placeholder="20"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.class_type}
+                onChange={(e) => setFormData({ ...formData, class_type: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                placeholder="e.g., Yoga, HIIT, Pilates"
               />
             </div>
-          </div>
 
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105"
-            >
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+              <select
+                value={formData.difficulty_level}
+                onChange={(e) => setFormData({ ...formData, difficulty_level: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Capacity</label>
+              <input
+                type="number"
+                required
+                min="1"
+                value={formData.max_capacity}
+                onChange={(e) => setFormData({ ...formData, max_capacity: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+              <input
+                type="number"
+                required
+                min="15"
+                value={formData.duration_minutes}
+                onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                rows="3"
+              />
+            </div>
+
+            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
               Create Class
             </button>
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-colors duration-200"
-            >
-              Cancel
-            </button>
+          </form>
+        </Modal>
+
+        {/* Schedule Modal */}
+        <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title={`Schedules - ${selectedClass?.class_name}`}>
+          <div className="space-y-4">
+            <form onSubmit={handleCreateSchedule} className="bg-gray-50 p-4 rounded-lg space-y-3">
+              <h3 className="font-semibold text-gray-900">Add New Schedule</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  required
+                  value={scheduleFormData.scheduled_date}
+                  onChange={(e) => setScheduleFormData({ ...scheduleFormData, scheduled_date: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={scheduleFormData.start_time}
+                    onChange={(e) => setScheduleFormData({ ...scheduleFormData, start_time: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={scheduleFormData.end_time}
+                    onChange={(e) => setScheduleFormData({ ...scheduleFormData, end_time: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                Add Schedule
+              </button>
+            </form>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold text-gray-900">Existing Schedules</h3>
+              {schedules.length === 0 ? (
+                <p className="text-sm text-gray-600">No schedules yet</p>
+              ) : (
+                schedules.map((schedule) => (
+                  <div key={schedule.id} className="bg-white border rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{formatDate(schedule.scheduled_date)}</p>
+                        <p className="text-sm text-gray-600">
+                          {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {schedule.confirmed_bookings || 0} / {schedule.max_capacity} booked
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleViewBookings(schedule.id)}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
+                      >
+                        View Bookings
+                      </button>
+                    </div>
+                    
+                    {selectedScheduleId === schedule.id && bookings.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm font-medium mb-2">Booked Members:</p>
+                        <div className="space-y-1">
+                          {bookings.map((booking) => (
+                            <div key={booking.booking_id} className="text-sm text-gray-600">
+                              • {booking.full_name} ({booking.email})
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </form>
-      </Modal>
+        </Modal>
+      </div>
     </DashboardLayout>
   );
 };
 
 export default TrainerClasses;
-
