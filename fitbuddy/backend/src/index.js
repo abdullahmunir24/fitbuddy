@@ -35,6 +35,7 @@ import gymRoutes from './routes/gymRoutes.js';
 import classRoutes from './routes/classRoutes.js';
 import trainerClientRoutes from './routes/trainerClientRoutes.js';
 import progressRoutes from './routes/progressRoutes.js';
+import cardioRoutes from './routes/cardioRoutes.js';
 
 
 /**
@@ -271,6 +272,20 @@ app.use('/api/trainer-clients', trainerClientRoutes);
  * - GET /api/progress/overview - Get progress overview
  */
 app.use('/api/progress', progressRoutes);
+
+/**
+ * Cardio Routes
+ * Handles cardio session tracking and analytics
+ * 
+ * Endpoints:
+ * - POST /api/cardio - Log cardio session
+ * - GET /api/cardio - Get all cardio sessions
+ * - GET /api/cardio/stats - Get cardio statistics
+ * - GET /api/cardio/:id - Get specific session
+ * - PUT /api/cardio/:id - Update session
+ * - DELETE /api/cardio/:id - Delete session
+ */
+app.use('/api/cardio', cardioRoutes);
 
 /**
  * =====================================

@@ -7,6 +7,7 @@
  * 1. Starts the server (which creates default users)
  * 2. Waits for server to be ready
  * 3. Seeds the workout data for member@gmail.com
+ * 4. Seeds the cardio data for member@gmail.com
  */
 
 import { spawn } from 'child_process';
@@ -64,6 +65,23 @@ async function hasWorkouts() {
 }
 
 /**
+ * Check if cardio sessions already exist for member@gmail.com
+ */
+async function hasCardioSessions() {
+  try {
+    const result = await pool.query(`
+      SELECT COUNT(*) as count 
+      FROM cardio_sessions c
+      JOIN users u ON c.user_id = u.id
+      WHERE u.email = 'member@gmail.com'
+    `);
+    return parseInt(result.rows[0].count) > 0;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
  * Seed workouts for member@gmail.com
  */
 async function seedWorkouts() {
@@ -79,7 +97,29 @@ async function seedWorkouts() {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`Seed process exited with code ${code}`));
+        reject(new Error(`Workout seed process exited with code ${code}`));
+      }
+    });
+  });
+}
+
+/**
+ * Seed cardio sessions for member@gmail.com
+ */
+async function seedCardio() {
+  return new Promise((resolve, reject) => {
+    console.log('🏃 Seeding cardio data for member@gmail.com...\n');
+    
+    const seedProcess = spawn('npm', ['run', 'seed-cardio'], {
+      stdio: 'inherit',
+      shell: true
+    });
+    
+    seedProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Cardio seed process exited with code ${code}`));
       }
     });
   });
@@ -118,6 +158,21 @@ async function startup() {
       console.log('\n✅ Workout seeding completed!\n');
     } catch (error) {
       console.error('❌ Workout seeding failed:', error.message);
+    }
+  }
+
+  // Check if cardio sessions already exist
+  const cardioAlreadySeeded = await hasCardioSessions();
+  
+  if (cardioAlreadySeeded) {
+    console.log('✅ Cardio data already exists for member@gmail.com\n');
+  } else {
+    // Seed cardio
+    try {
+      await seedCardio();
+      console.log('\n✅ Cardio seeding completed!\n');
+    } catch (error) {
+      console.error('❌ Cardio seeding failed:', error.message);
     }
   }
   
