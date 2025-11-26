@@ -16,7 +16,7 @@
 
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { findUserById, updateUser, deleteUser, updateUserPassword } from '../db/users.js';
+import { findUserById, updateUser, deleteUser, updateUserPassword, getUserProfile, updateUserProfile } from '../db/users.js';
 import { getUserSessionStats } from '../data/mockData.js';
 import requireAuth from '../middleware/requireAuth.js';
 
@@ -403,6 +403,77 @@ router.put('/:id/password', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error changing password',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * ========================================
+ * GET /api/users/:id/profile
+ * ========================================
+ * 
+ * Get user profile data from user_profiles table
+ */
+router.get('/:id/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const currentUser = req.user;
+
+    if (currentUser.id !== userId && currentUser.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to view this profile',
+      });
+    }
+
+    const profile = await getUserProfile(userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'User profile retrieved successfully',
+      data: profile,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving user profile',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * ========================================
+ * PUT /api/users/:id/profile
+ * ========================================
+ * 
+ * Update user profile data (height, weight, fitness goal, etc.)
+ */
+router.put('/:id/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const currentUser = req.user;
+
+    if (currentUser.id !== userId && currentUser.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this profile',
+      });
+    }
+
+    const profileData = req.body;
+    const updatedProfile = await updateUserProfile(userId, profileData);
+
+    res.status(200).json({
+      success: true,
+      message: 'User profile updated successfully',
+      data: updatedProfile,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user profile',
       error: error.message,
     });
   }

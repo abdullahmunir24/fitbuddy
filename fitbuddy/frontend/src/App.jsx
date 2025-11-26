@@ -10,6 +10,7 @@ import MemberProgress from './pages/member/MemberProgress'
 import MemberGyms from './pages/member/MemberGyms'
 import MemberProfile from './pages/member/MemberProfile'
 import MemberTrainer from './pages/member/MemberTrainer'
+import MemberCardio from './pages/member/MemberCardio'
 import TrainerDashboard from './pages/trainer/TrainerDashboard'
 import TrainerClasses from './pages/trainer/TrainerClasses'
 import TrainerClients from './pages/trainer/TrainerClients'
@@ -27,6 +28,7 @@ function App() {
         {/* Member Routes */}
         <Route path="/member/dashboard" element={<MemberDashboard />} />
         <Route path="/member/workouts" element={<MemberWorkouts />} />
+        <Route path="/member/cardio" element={<MemberCardio />} />
         <Route path="/member/classes" element={<MemberClasses />} />
         <Route path="/member/progress" element={<MemberProgress />} />
         <Route path="/member/gyms" element={<MemberGyms />} />

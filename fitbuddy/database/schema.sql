@@ -227,6 +227,43 @@ CREATE TABLE IF NOT EXISTS workout_exercises (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Cardio sessions - Dedicated cardio activity tracking
+CREATE TABLE IF NOT EXISTS cardio_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50) NOT NULL, -- e.g., 'running', 'cycling', 'swimming', 'rowing', 'walking', 'elliptical', 'stair_climbing', 'hiking'
+    session_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    duration_minutes INTEGER NOT NULL,
+    distance_km DECIMAL(6,2),
+    average_speed_kmh DECIMAL(5,2),
+    calories_burned INTEGER, -- Auto-calculated using MET values
+    pace_min_per_km DECIMAL(5,2), -- Minutes per kilometer, auto-calculated
+    intensity_level VARCHAR(20) CHECK (intensity_level IN ('low', 'moderate', 'high', 'very_high')),
+    location VARCHAR(200), -- e.g., 'Outdoor', 'Treadmill', 'Track'
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cardio goals - Specific cardio-related goals
+CREATE TABLE IF NOT EXISTS cardio_goals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50), -- NULL for all cardio types
+    goal_type VARCHAR(50) NOT NULL, -- e.g., 'weekly_distance', 'weekly_duration', 'pace_improvement', 'total_calories'
+    target_value DECIMAL(10,2) NOT NULL,
+    current_value DECIMAL(10,2) DEFAULT 0,
+    unit VARCHAR(20) NOT NULL, -- e.g., 'km', 'minutes', 'calories', 'min/km'
+    time_period VARCHAR(20) NOT NULL, -- e.g., 'weekly', 'monthly', 'yearly'
+    start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    end_date DATE,
+    is_achieved BOOLEAN DEFAULT FALSE,
+    achieved_date DATE,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'abandoned')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ========================================
 -- 4. CLASSES & SCHEDULING
 -- ========================================
@@ -434,6 +471,15 @@ CREATE INDEX IF NOT EXISTS idx_class_bookings_schedule_id ON class_bookings(sche
 CREATE INDEX IF NOT EXISTS idx_user_progress_user_id ON user_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_progress_date ON user_progress(measurement_date);
 
+-- Cardio sessions indexes
+CREATE INDEX IF NOT EXISTS idx_cardio_sessions_user_id ON cardio_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_cardio_sessions_date ON cardio_sessions(session_date);
+CREATE INDEX IF NOT EXISTS idx_cardio_sessions_activity_type ON cardio_sessions(activity_type);
+
+-- Cardio goals indexes
+CREATE INDEX IF NOT EXISTS idx_cardio_goals_user_id ON cardio_goals(user_id);
+CREATE INDEX IF NOT EXISTS idx_cardio_goals_status ON cardio_goals(status);
+
 -- Notifications table indexes
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
@@ -493,6 +539,12 @@ CREATE TRIGGER update_personal_records_updated_at BEFORE UPDATE ON personal_reco
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_user_goals_updated_at BEFORE UPDATE ON user_goals
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_cardio_sessions_updated_at BEFORE UPDATE ON cardio_sessions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_cardio_goals_updated_at BEFORE UPDATE ON cardio_goals
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ========================================

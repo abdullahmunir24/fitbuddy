@@ -76,11 +76,26 @@ export const createWorkout = async (userId, workoutData) => {
 
     await client.query('COMMIT');
 
+    // Format date consistently - avoid timezone issues by using the raw date string
+    let dateISO;
+    if (typeof workout.workout_date === 'string') {
+      // Already in YYYY-MM-DD format
+      dateISO = workout.workout_date.split('T')[0];
+    } else if (workout.workout_date instanceof Date) {
+      // Convert to local date string in YYYY-MM-DD format
+      const year = workout.workout_date.getFullYear();
+      const month = String(workout.workout_date.getMonth() + 1).padStart(2, '0');
+      const day = String(workout.workout_date.getDate()).padStart(2, '0');
+      dateISO = `${year}-${month}-${day}`;
+    } else {
+      dateISO = new Date().toISOString().split('T')[0];
+    }
+
     return {
       id: workout.id,
       name: workout.workout_name,
-      date: new Date(workout.workout_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      dateISO: workout.workout_date instanceof Date ? workout.workout_date.toISOString().split('T')[0] : workout.workout_date, // Store ISO format for updates
+      date: new Date(dateISO + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      dateISO: dateISO, // Store ISO format for updates
       completed: workout.end_time !== null,
       exercises: exercises,
     };
@@ -133,11 +148,26 @@ export const getUserWorkouts = async (userId) => {
           };
         });
 
+        // Format date consistently - avoid timezone issues by using the raw date string
+        let dateISO;
+        if (typeof workout.workout_date === 'string') {
+          // Already in YYYY-MM-DD format
+          dateISO = workout.workout_date.split('T')[0];
+        } else if (workout.workout_date instanceof Date) {
+          // Convert to local date string in YYYY-MM-DD format
+          const year = workout.workout_date.getFullYear();
+          const month = String(workout.workout_date.getMonth() + 1).padStart(2, '0');
+          const day = String(workout.workout_date.getDate()).padStart(2, '0');
+          dateISO = `${year}-${month}-${day}`;
+        } else {
+          dateISO = new Date().toISOString().split('T')[0];
+        }
+
         return {
           id: workout.id,
           name: workout.workout_name,
-          date: new Date(workout.workout_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          dateISO: workout.workout_date instanceof Date ? workout.workout_date.toISOString().split('T')[0] : workout.workout_date, // Store ISO format for updates
+          date: new Date(dateISO + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          dateISO: dateISO, // Store ISO format for updates
           completed: workout.end_time !== null,
           exercises: exercises,
         };
@@ -192,11 +222,26 @@ export const getWorkoutById = async (workoutId, userId) => {
       };
     });
 
+    // Format date consistently - avoid timezone issues by using the raw date string
+    let dateISO;
+    if (typeof workout.workout_date === 'string') {
+      // Already in YYYY-MM-DD format
+      dateISO = workout.workout_date.split('T')[0];
+    } else if (workout.workout_date instanceof Date) {
+      // Convert to local date string in YYYY-MM-DD format
+      const year = workout.workout_date.getFullYear();
+      const month = String(workout.workout_date.getMonth() + 1).padStart(2, '0');
+      const day = String(workout.workout_date.getDate()).padStart(2, '0');
+      dateISO = `${year}-${month}-${day}`;
+    } else {
+      dateISO = new Date().toISOString().split('T')[0];
+    }
+
     return {
       id: workout.id,
       name: workout.workout_name,
-      date: new Date(workout.workout_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      dateISO: workout.workout_date instanceof Date ? workout.workout_date.toISOString().split('T')[0] : workout.workout_date, // Store ISO format for updates
+      date: new Date(dateISO + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      dateISO: dateISO, // Store ISO format for updates
       completed: workout.end_time !== null,
       exercises: exercises,
     };

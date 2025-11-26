@@ -154,6 +154,8 @@ function addVariance(value, percentage = 0.1) {
 function generatePastDate(daysAgo) {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
+  // Set to noon to avoid timezone issues
+  date.setHours(12, 0, 0, 0);
   return date;
 }
 
@@ -291,9 +293,15 @@ async function insertWorkouts(userId, workouts) {
       
       try {
         // Check if workout already exists for this date
+        // Format date consistently to avoid timezone issues
+        const year = workout.date.getFullYear();
+        const month = String(workout.date.getMonth() + 1).padStart(2, '0');
+        const day = String(workout.date.getDate()).padStart(2, '0');
+        const workoutDateStr = `${year}-${month}-${day}`;
+        
         const checkResult = await client.query(
           'SELECT id FROM user_workouts WHERE user_id = $1 AND workout_date = $2 AND workout_name = $3',
-          [userId, workout.date.toISOString().split('T')[0], workout.name]
+          [userId, workoutDateStr, workout.name]
         );
         
         if (checkResult.rows.length > 0) {
@@ -311,7 +319,7 @@ async function insertWorkouts(userId, workouts) {
           [
             userId,
             workout.name,
-            workout.date.toISOString().split('T')[0],
+            workoutDateStr,
             workout.startTime,
             workout.endTime,
             workout.durationMinutes,
@@ -360,16 +368,19 @@ async function insertWorkouts(userId, workouts) {
  */
 async function seedWorkouts() {
   try {
-    console.log('🌱 Starting workout seed for member@gmail.com...\n');
+    // Seed for member@gmail.com (the default test user)
+    const targetEmail = 'member@gmail.com';
+    console.log(`🌱 Starting workout seed for ${targetEmail}...\n`);
     
     // Get user ID for member@gmail.com
     const userResult = await pool.query(
       'SELECT id, email, full_name FROM users WHERE email = $1',
-      ['member@gmail.com']
+      [targetEmail]
     );
     
     if (userResult.rows.length === 0) {
-      console.error('❌ User member@gmail.com not found. Please ensure the user exists first.');
+      console.error(`❌ User ${targetEmail} not found. Please ensure the user exists first.`);
+      console.error('   The user should be auto-created on server startup.');
       return;
     }
     

@@ -1,0 +1,82 @@
+/* Cardio Dashboard - Color Palette Reference */
+
+/* Primary Colors */
+:root {
+  --color-primary: #6366f1;      /* Indigo - Main brand color */
+  --color-secondary: #8b5cf6;    /* Purple - Secondary accent */
+  --color-success: #10b981;      /* Green - Positive metrics */
+  --color-warning: #f59e0b;      /* Amber - Attention items */
+  --color-danger: #ef4444;       /* Red - Critical items */
+  --color-info: #3b82f6;         /* Blue - Information */
+  --color-cyan: #06b6d4;         /* Cyan - Distance metrics */
+  --color-pink: #ec4899;         /* Pink - Variety accent */
+  --color-teal: #14b8a6;         /* Teal - Alternative accent */
+  --color-orange: #f97316;       /* Orange - Calories/energy */
+}
+
+/* Chart Color Array Order */
+/* Used for multi-activity displays like pie charts and activity breakdown */
+const CHART_COLORS = [
+  '#6366f1',  // 1. Indigo (Primary)
+  '#10b981',  // 2. Green (Success)
+  '#f59e0b',  // 3. Amber (Warning)
+  '#06b6d4',  // 4. Cyan
+  '#8b5cf6',  // 5. Purple (Secondary)
+  '#ef4444',  // 6. Red (Danger)
+  '#ec4899',  // 7. Pink
+  '#14b8a6',  // 8. Teal
+];
+
+/* Chart Usage Map */
+/*
+7-Day Activity (Duration): #6366f1 (Indigo/Primary)
+7-Day Activity (Calories): #f97316 (Orange)
+Activity Breakdown: CHART_COLORS array rotation
+30-Day Distance: #06b6d4 (Cyan) with gradient
+Pace Per Session: #3b82f6 (Blue/Info)
+Pace Improvement: #10b981 (Green/Success) with gradient
+Calories Per Workout: #f97316 (Orange)
+Distance Per Session: #14b8a6 (Teal)
+Weekly Calories: Gradient (#8b5cf6 to #6366f1)
+Time by Activity: CHART_COLORS array rotation (pie chart)
+*/
+
+/* Gradient Definitions */
+/*
+Distance Gradient: cyan (#06b6d4) at 5% opacity 0.8, 95% opacity 0.1
+Pace Gradient: green (#10b981) at 5% opacity 0.3, 95% opacity 0.05
+Calories Gradient: purple (#8b5cf6) at 5% opacity 0.8, 95% opacity 0.1
+Weekly Bars Gradient: purple (#8b5cf6) to indigo (#6366f1) vertical
+*/
+
+/* Background Colors */
+/*
+Cards: white (#ffffff)
+Stats Cards: Gradient backgrounds with color-500 to color-600
+Empty States: gray-50 (#f9fafb)
+Hover States: gray-50 (#f9fafb) or color-specific-50
+*/
+
+/* Text Colors */
+/*
+Titles: gray-900 (#111827)
+Body/Description: gray-600 (#4b5563)
+Labels: gray-700 (#374151)
+Muted/Secondary: gray-500 (#6b7280)
+Stats Values: Specific color-600 variants
+*/
+
+/* Border Colors */
+/*
+Cards: None (shadow only)
+Inputs: gray-300 (#d1d5db)
+Grid Lines: gray-100 (#f3f4f6) or #f0f0f0
+Dividers: gray-100 (#f3f4f6)
+*/
+
+/* Shadow System */
+/*
+Cards: shadow-lg (Tailwind default large shadow)
+Tooltips: shadow-xl (Extra large for elevation)
+Hover Effects: shadow-md (Medium shadow on hover)
+*/
