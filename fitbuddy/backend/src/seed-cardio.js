@@ -15,13 +15,8 @@ const pool = new Pool({
 
 const activityTypes = [
   { type: 'running', weight: 40, avgDistance: 5, distanceVariance: 2 },
-  { type: 'cycling', weight: 25, avgDistance: 15, distanceVariance: 5 },
-  { type: 'walking', weight: 15, avgDistance: 3, distanceVariance: 1 },
-  { type: 'swimming', weight: 10, avgDistance: 1.5, distanceVariance: 0.5 },
-  { type: 'rowing', weight: 5, avgDistance: 3, distanceVariance: 1 },
-  { type: 'elliptical', weight: 3, avgDistance: 4, distanceVariance: 1 },
-  { type: 'hiking', weight: 1, avgDistance: 8, distanceVariance: 3 },
-  { type: 'stair_climbing', weight: 1, avgDistance: 0, distanceVariance: 0 },
+  { type: 'cycling', weight: 35, avgDistance: 15, distanceVariance: 5 },
+  { type: 'walking', weight: 25, avgDistance: 3, distanceVariance: 1 },
 ];
 
 const intensityLevels = ['low', 'moderate', 'high', 'very_high'];
@@ -30,11 +25,6 @@ const locations = {
   running: ['Outdoor', 'Treadmill', 'Park', 'Track', 'Trail'],
   cycling: ['Outdoor', 'Indoor Bike', 'Bike Path', 'Road'],
   walking: ['Outdoor', 'Treadmill', 'Park', 'Neighborhood'],
-  swimming: ['Pool', 'Lap Pool', 'Open Water'],
-  rowing: ['Gym', 'Indoor Rower', 'Water'],
-  elliptical: ['Gym', 'Home'],
-  hiking: ['Trail', 'Mountain', 'Forest'],
-  stair_climbing: ['Gym', 'Stair Machine', 'Building Stairs'],
 };
 
 const notes = [
@@ -192,6 +182,7 @@ function generateCardioSessions(daysBack = 60) {
   for (let i = 0; i < daysBack; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
+    date.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
     
     // Skip some days (not every day has a session)
     // More likely to exercise on certain days
@@ -211,9 +202,15 @@ function generateCardioSessions(daysBack = 60) {
     const location = locations[activity.type][Math.floor(Math.random() * locations[activity.type].length)];
     const note = notes[Math.floor(Math.random() * notes.length)];
     
+    // Format date consistently to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
     sessions.push({
       activityType: activity.type,
-      sessionDate: date.toISOString().split('T')[0],
+      sessionDate: dateStr,
       durationMinutes: duration,
       distanceKm: distance,
       caloriesBurned: calories,
