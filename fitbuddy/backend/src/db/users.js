@@ -255,3 +255,106 @@ export const getUserCount = async () => {
     throw error;
   }
 };
+
+/**
+ * Get user profile data (from user_profiles table)
+ * 
+ * @param {number} userId - User ID
+ * @returns {Promise<Object|null>} User profile object or null if not found
+ */
+export const getUserProfile = async (userId) => {
+  try {
+    const result = await query(
+      'SELECT * FROM user_profiles WHERE user_id = $1',
+      [userId]
+    );
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update or create user profile data
+ * 
+ * @param {number} userId - User ID
+ * @param {Object} profileData - Profile data to update
+ * @returns {Promise<Object>} Updated/created profile object
+ */
+export const updateUserProfile = async (userId, profileData) => {
+  try {
+    const { height_cm, weight_kg, fitness_goal, date_of_birth, gender, experience_level, preferred_workout_types } = profileData;
+    
+    // Check if profile exists
+    const existing = await getUserProfile(userId);
+    
+    if (existing) {
+      // Update existing profile
+      const fields = [];
+      const values = [];
+      let paramCount = 1;
+      
+      if (height_cm !== undefined) {
+        fields.push(`height_cm = $${paramCount}`);
+        values.push(height_cm);
+        paramCount++;
+      }
+      if (weight_kg !== undefined) {
+        fields.push(`weight_kg = $${paramCount}`);
+        values.push(weight_kg);
+        paramCount++;
+      }
+      if (fitness_goal !== undefined) {
+        fields.push(`fitness_goal = $${paramCount}`);
+        values.push(fitness_goal);
+        paramCount++;
+      }
+      if (date_of_birth !== undefined) {
+        fields.push(`date_of_birth = $${paramCount}`);
+        values.push(date_of_birth);
+        paramCount++;
+      }
+      if (gender !== undefined) {
+        fields.push(`gender = $${paramCount}`);
+        values.push(gender);
+        paramCount++;
+      }
+      if (experience_level !== undefined) {
+        fields.push(`experience_level = $${paramCount}`);
+        values.push(experience_level);
+        paramCount++;
+      }
+      if (preferred_workout_types !== undefined) {
+        fields.push(`preferred_workout_types = $${paramCount}`);
+        values.push(preferred_workout_types);
+        paramCount++;
+      }
+      
+      if (fields.length === 0) {
+        return existing;
+      }
+      
+      fields.push(`updated_at = CURRENT_TIMESTAMP`);
+      values.push(userId);
+      
+      const result = await query(
+        `UPDATE user_profiles SET ${fields.join(', ')} WHERE user_id = $${paramCount} RETURNING *`,
+        values
+      );
+      return result.rows[0];
+    } else {
+      // Create new profile
+      const result = await query(
+        `INSERT INTO user_profiles (user_id, height_cm, weight_kg, fitness_goal, date_of_birth, gender, experience_level, preferred_workout_types)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [userId, height_cm, weight_kg, fitness_goal, date_of_birth, gender, experience_level, preferred_workout_types]
+      );
+      return result.rows[0];
+    }
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
