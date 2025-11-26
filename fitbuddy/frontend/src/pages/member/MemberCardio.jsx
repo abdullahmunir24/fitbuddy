@@ -1,13 +1,78 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import LineChart from '../../components/charts/LineChart';
-import BarChart from '../../components/charts/BarChart';
-import PieChart from '../../components/charts/PieChart';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  AreaChart,
+  Area,
+  ScatterChart,
+  Scatter,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
+
+// Modern color palette
+const COLORS = {
+  primary: '#6366f1',    // indigo
+  secondary: '#8b5cf6',  // purple
+  success: '#10b981',    // green
+  warning: '#f59e0b',    // amber
+  danger: '#ef4444',     // red
+  info: '#3b82f6',       // blue
+  cyan: '#06b6d4',       // cyan
+  pink: '#ec4899',       // pink
+  teal: '#14b8a6',       // teal
+  orange: '#f97316',     // orange
+};
+
+const CHART_COLORS = [
+  COLORS.primary,
+  COLORS.success,
+  COLORS.warning,
+  COLORS.cyan,
+  COLORS.secondary,
+  COLORS.danger,
+  COLORS.pink,
+  COLORS.teal,
+];
+
+// Unified card styling
+const CARD_PADDING = 'p-6';
+const CHART_HEIGHT = 280;
+const CARD_CLASS = 'bg-white rounded-xl shadow-lg';
+
+// Custom tooltip component
+const CustomTooltip = ({ active, payload, label, formatter }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+        <p className="font-semibold text-sm mb-1">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-xs" style={{ color: entry.color }}>
+            {entry.name}: {formatter ? formatter(entry.value) : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 const MemberCardio = () => {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
+  const [allSessions, setAllSessions] = useState([]); // Store all sessions for filtering
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('month');
@@ -15,6 +80,7 @@ const MemberCardio = () => {
   const [editingSession, setEditingSession] = useState(null);
   const [weeklyData, setWeeklyData] = useState([]);
   const [monthlyTrend, setMonthlyTrend] = useState([]);
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
   
   // Analytics data
   const [pacePerSession, setPacePerSession] = useState([]);
@@ -22,6 +88,11 @@ const MemberCardio = () => {
   const [caloriesPerWorkout, setCaloriesPerWorkout] = useState([]);
   const [weeklyCalories, setWeeklyCalories] = useState([]);
   const [caloriesByType, setCaloriesByType] = useState([]);
+  const [distancePerSession, setDistancePerSession] = useState([]);
+  
+  // Filter states
+  const [paceActivityFilter, setPaceActivityFilter] = useState('all');
+  const [analyticsDateFilter, setAnalyticsDateFilter] = useState('7days'); // Unified filter for pace, distance, and calories charts
 
   const [formData, setFormData] = useState({
     activityType: 'running',
@@ -54,18 +125,60 @@ const MemberCardio = () => {
   useEffect(() => {
     fetchSessions();
     fetchStats();
-  }, [period]);
+  }, []); // Removed period dependency, fetch all sessions once on mount
+
+  // Update weekly data when week offset or sessions change
+  useEffect(() => {
+    if (allSessions.length > 0) {
+      processWeeklyData(allSessions, weekOffset);
+    }
+  }, [weekOffset, allSessions]);
+
+  const getDateISOFromDaysAgo = (daysAgo) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getWeekDateRange = (offset) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // For offset 0: 6 days ago to today (last 7 days)
+    // For offset -1: 13 days ago to 7 days ago (previous 7 days)
+    // For offset -2: 20 days ago to 14 days ago (2 weeks ago)
+    const endDaysAgo = Math.abs(offset) * 7; // 0, 7, 14, etc.
+    const startDaysAgo = endDaysAgo + 6;      // 6, 13, 20, etc.
+    
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - startDaysAgo);
+    
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() - endDaysAgo);
+    
+    const formatDate = (date) => {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+    
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
 
   const fetchSessions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/cardio?period=${period}`, {
+      // Fetch ALL sessions (limit=1000 to get all data)
+      const response = await fetch(`http://localhost:3001/api/cardio?limit=1000`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
       if (data.success) {
+        console.log('Fetched sessions:', data.data.length);
         setSessions(data.data);
-        processWeeklyData(data.data);
+        setAllSessions(data.data); // Store all sessions for filtering
+        processWeeklyData(data.data, weekOffset);
         processMonthlyTrend(data.data);
         processAnalyticsData(data.data);
       }
@@ -91,44 +204,78 @@ const MemberCardio = () => {
     }
   };
 
-  const processWeeklyData = (sessionsData) => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      return date.toISOString().split('T')[0];
-    });
-
-    const weekData = last7Days.map(date => {
-      const daySessions = sessionsData.filter(s => s.session_date === date);
-      return {
-        date,
-        dayLabel: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-        duration: daySessions.reduce((sum, s) => sum + parseInt(s.duration_minutes || 0), 0),
+  const processWeeklyData = (sessionsData, offset = 0) => {
+    const weekData = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    console.log('========== PROCESSING WEEKLY DATA ==========');
+    console.log('Offset:', offset);
+    console.log('Total sessions:', sessionsData.length);
+    
+    // For offset 0: show last 7 days ending today (days 0-6 ago)
+    // For offset -1: show previous 7 days (days 7-13 ago)
+    // For offset -2: show 2 weeks ago (days 14-20 ago)
+    const baseOffset = Math.abs(offset) * 7;
+    
+    for (let i = 0; i < 7; i++) {
+      const daysAgo = baseOffset + i;
+      
+      const date = new Date(today);
+      date.setDate(date.getDate() - daysAgo);
+      
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
+      
+      const daySessions = sessionsData.filter(s => {
+        const sessionDate = s.session_date.split('T')[0];
+        return sessionDate === dateStr;
+      });
+      
+      const duration = daySessions.reduce((sum, s) => sum + parseInt(s.duration_minutes || 0), 0);
+      const calories = daySessions.reduce((sum, s) => sum + parseInt(s.calories_burned || 0), 0);
+      
+      console.log(`${dateStr} (${dayLabel}): ${daySessions.length} sessions, ${duration} min, ${calories} kcal`);
+      
+      weekData.push({
+        date: dateStr,
+        dayLabel,
+        duration: duration,
         distance: daySessions.reduce((sum, s) => sum + parseFloat(s.distance_km || 0), 0),
-        calories: daySessions.reduce((sum, s) => sum + parseInt(s.calories_burned || 0), 0),
+        calories: calories,
         sessions: daySessions.length,
-      };
-    });
+      });
+    }
+    
+    // Reverse to show chronological order (oldest to newest)
+    weekData.reverse();
 
+    console.log('========== FINAL WEEK DATA ==========');
+    console.log(weekData);
+    console.log('==========================================');
     setWeeklyData(weekData);
   };
 
   const processMonthlyTrend = (sessionsData) => {
-    const last30Days = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
-      return date.toISOString().split('T')[0];
-    });
-
-    const trend = last30Days.map(date => {
-      const daySessions = sessionsData.filter(s => s.session_date === date);
-      return {
-        date,
+    const last30Days = [];
+    for (let i = 29; i >= 0; i--) {
+      const dateStr = getDateISOFromDaysAgo(i);
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      
+      const daySessions = sessionsData.filter(s => s.session_date === dateStr);
+      last30Days.push({
+        date: dateStr,
+        label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         distance: daySessions.reduce((sum, s) => sum + parseFloat(s.distance_km || 0), 0),
-      };
-    });
+      });
+    }
 
-    setMonthlyTrend(trend);
+    setMonthlyTrend(last30Days);
   };
 
   const processAnalyticsData = (sessionsData) => {
@@ -215,7 +362,7 @@ const MemberCardio = () => {
     );
     setWeeklyCalories(weeklyArray);
 
-    // 5. Calories by Cardio Type (for pie chart)
+    // 5. Time spent by Activity Type (for pie chart) - changed from calories to duration
     const typeData = {};
     sessionsData.forEach(session => {
       const type = session.activity_type;
@@ -223,19 +370,30 @@ const MemberCardio = () => {
         typeData[type] = {
           activity: type,
           label: type,
-          calories: 0,
+          duration: 0, // Changed from calories to duration
           sessions: 0,
           distance: 0,
         };
       }
       
-      typeData[type].calories += parseInt(session.calories_burned) || 0;
+      typeData[type].duration += parseInt(session.duration_minutes) || 0;
       typeData[type].sessions += 1;
       typeData[type].distance += parseFloat(session.distance_km) || 0;
     });
 
-    const typeArray = Object.values(typeData).sort((a, b) => b.calories - a.calories);
+    const typeArray = Object.values(typeData).sort((a, b) => b.duration - a.duration);
     setCaloriesByType(typeArray);
+
+    // 6. Distance Per Session
+    const distanceData = sortedSessions
+      .filter(s => s.distance_km && parseFloat(s.distance_km) > 0)
+      .map(session => ({
+        label: new Date(session.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: session.session_date,
+        distance: parseFloat(session.distance_km),
+        activity: session.activity_type,
+      }));
+    setDistancePerSession(distanceData);
   };
 
   const handleSubmit = async (e) => {
@@ -442,209 +600,729 @@ const MemberCardio = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Weekly Activity Chart */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">7-Day Activity</h3>
-            <div className="space-y-4">
-              {/* Duration Chart */}
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">Duration (minutes)</p>
-                <div className="flex items-end justify-between h-32 gap-2">
-                  {weeklyData.map((day, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center">
-                      <div className="w-full bg-gray-100 rounded-t-lg relative overflow-hidden" style={{ height: '100%' }}>
-                        <div
-                          className="absolute bottom-0 w-full bg-gradient-to-t from-indigo-500 to-indigo-400 rounded-t-lg transition-all duration-500"
-                          style={{
-                            height: `${(day.duration / maxWeeklyDuration) * 100}%`,
-                          }}
-                        >
-                          {day.duration > 0 && (
-                            <div className="text-[10px] text-white font-bold text-center mt-1">
-                              {day.duration}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2 font-medium">{day.dayLabel}</p>
-                    </div>
-                  ))}
-                </div>
+          {/* Weekly Activity Chart - Redesigned with Recharts */}
+          <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-gray-900">7-Day Activity</h3>
+              <p className="text-sm text-gray-500">{getWeekDateRange(weekOffset)}</p>
+            </div>
+            
+            {/* Date Filter for 7-Day Activity */}
+            <div className="mb-4 flex gap-2 flex-wrap items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setWeekOffset(0)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    weekOffset === 0 
+                      ? 'bg-indigo-500 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  onClick={() => setWeekOffset(-1)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    weekOffset === -1 
+                      ? 'bg-indigo-500 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Previous Week
+                </button>
+                <button
+                  onClick={() => setWeekOffset(-2)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    weekOffset === -2 
+                      ? 'bg-indigo-500 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  2 Weeks Ago
+                </button>
               </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setWeekOffset(weekOffset - 1)}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                  title="Previous week"
+                >
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setWeekOffset(weekOffset + 1)}
+                  disabled={weekOffset >= 0}
+                  className={`p-1.5 rounded-lg border border-gray-200 transition-colors ${
+                    weekOffset >= 0 
+                      ? 'opacity-50 cursor-not-allowed bg-gray-50' 
+                      : 'hover:bg-gray-50'
+                  }`}
+                  title="Next week"
+                >
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Debug Info */}
+            {weeklyData.length === 0 && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">⚠️ No weekly data loaded. Week offset: {weekOffset}</p>
+              </div>
+            )}
+            
+            {weeklyData.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">✓ Loaded {weeklyData.length} days of data</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Total duration: {weeklyData.reduce((sum, d) => sum + d.duration, 0)} min, 
+                  Total calories: {weeklyData.reduce((sum, d) => sum + d.calories, 0)} kcal
+                </p>
+              </div>
+            )}
+            
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+              <BarChart data={weeklyData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="dayLabel" 
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  label={{ value: 'Minutes', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+                />
+                <Tooltip 
+                  content={<CustomTooltip formatter={(value) => `${value} min`} />}
+                  cursor={{ fill: 'rgba(99, 102, 241, 0.1)' }}
+                />
+                <Bar dataKey="duration" fill={COLORS.primary} radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
 
-              {/* Calories Chart */}
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">Calories Burned</p>
-                <div className="flex items-end justify-between h-24 gap-2">
-                  {weeklyData.map((day, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center">
-                      <div className="w-full bg-gray-100 rounded-t-lg relative overflow-hidden" style={{ height: '100%' }}>
-                        <div
-                          className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-500"
-                          style={{
-                            height: `${(day.calories / maxWeeklyCalories) * 100}%`,
-                          }}
-                        >
-                          {day.calories > 0 && (
-                            <div className="text-[9px] text-white font-bold text-center mt-1">
-                              {day.calories}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={weeklyData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="dayLabel" 
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    label={{ value: 'Calories', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#6b7280' } }}
+                  />
+                  <Tooltip 
+                    content={<CustomTooltip formatter={(value) => `${value} kcal`} />}
+                    cursor={{ fill: 'rgba(249, 115, 22, 0.1)' }}
+                  />
+                  <Bar dataKey="calories" fill={COLORS.orange} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Activity Distribution */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Activity Breakdown</h3>
-            {stats?.byActivity && stats.byActivity.length > 0 ? (
-              <div className="space-y-3">
-                {stats.byActivity
-                  .sort((a, b) => b.total_duration - a.total_duration)
-                  .map((activity, idx) => {
-                    const totalAllActivities = stats.byActivity.reduce(
-                      (sum, a) => sum + parseInt(a.total_duration || 0),
-                      0
-                    );
-                    const percentage = (parseInt(activity.total_duration) / totalAllActivities) * 100;
-
-                    return (
-                      <div key={idx}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{getActivityIcon(activity.activity_type)}</span>
-                            <span className="font-medium text-gray-700 capitalize">
-                              {activity.activity_type.replace('_', ' ')}
-                            </span>
+          {/* Calories Breakdown by Activity - Pie Chart */}
+          <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Calories Breakdown</h3>
+              <p className="text-sm text-gray-500">Calories burned by activity type</p>
+            </div>
+            
+            {/* Date Filter */}
+            <div className="mb-4 flex gap-2 flex-wrap">
+              <button
+                onClick={() => setWeekOffset(0)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  weekOffset === 0 
+                    ? 'bg-purple-500 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Last 7 Days
+              </button>
+              <button
+                onClick={() => setWeekOffset(-1)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  weekOffset === -1 
+                    ? 'bg-purple-500 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Previous Week
+              </button>
+              <button
+                onClick={() => setWeekOffset(-2)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  weekOffset === -2 
+                    ? 'bg-purple-500 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                2 Weeks Ago
+              </button>
+            </div>
+            
+            {/* Debug Info */}
+            {(!allSessions || allSessions.length === 0) && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">⚠️ No sessions loaded. allSessions: {allSessions ? allSessions.length : 'null'}</p>
+              </div>
+            )}
+            
+            {allSessions && allSessions.length > 0 && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">✓ Loaded {allSessions.length} total sessions</p>
+              </div>
+            )}
+            
+            {allSessions && allSessions.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Pie Chart */}
+                <div className="flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={(() => {
+                          // Calculate calories for each activity in the current week
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const caloriesByActivity = {};
+                          
+                          for (let i = 6; i >= 0; i--) {
+                            const daysAgo = i - (weekOffset * 7);
+                            if (daysAgo < 0) continue;
+                            
+                            const date = new Date(today);
+                            date.setDate(date.getDate() - daysAgo);
+                            const dateStr = date.toISOString().split('T')[0];
+                            
+                            const daySessions = allSessions.filter(s => s.session_date.split('T')[0] === dateStr);
+                            daySessions.forEach(session => {
+                              const activity = session.activity_type;
+                              const calories = parseInt(session.calories_burned || 0);
+                              caloriesByActivity[activity] = (caloriesByActivity[activity] || 0) + calories;
+                            });
+                          }
+                          
+                          return Object.entries(caloriesByActivity).map(([activity, calories]) => ({
+                            name: activity.replace('_', ' '),
+                            value: calories,
+                            activity: activity
+                          }));
+                        })()}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {(() => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const caloriesByActivity = {};
+                          
+                          for (let i = 6; i >= 0; i--) {
+                            const daysAgo = i - (weekOffset * 7);
+                            if (daysAgo < 0) continue;
+                            
+                            const date = new Date(today);
+                            date.setDate(date.getDate() - daysAgo);
+                            const dateStr = date.toISOString().split('T')[0];
+                            
+                            const daySessions = allSessions.filter(s => s.session_date.split('T')[0] === dateStr);
+                            daySessions.forEach(session => {
+                              const activity = session.activity_type;
+                              const calories = parseInt(session.calories_burned || 0);
+                              caloriesByActivity[activity] = (caloriesByActivity[activity] || 0) + calories;
+                            });
+                          }
+                          
+                          return Object.keys(caloriesByActivity).map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ));
+                        })()}
+                      </Pie>
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+                                <p className="font-semibold text-sm capitalize mb-1">{payload[0].payload.name}</p>
+                                <p className="text-xs">🔥 {payload[0].value} kcal</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend with Stats */}
+                <div className="flex flex-col justify-center space-y-3">
+                  {(() => {
+                    // Calculate calories for legend
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const caloriesByActivity = {};
+                    
+                    for (let i = 6; i >= 0; i--) {
+                      const daysAgo = i - (weekOffset * 7);
+                      if (daysAgo < 0) continue;
+                      
+                      const date = new Date(today);
+                      date.setDate(date.getDate() - daysAgo);
+                      const dateStr = date.toISOString().split('T')[0];
+                      
+                      const daySessions = allSessions.filter(s => s.session_date.split('T')[0] === dateStr);
+                      daySessions.forEach(session => {
+                        const activity = session.activity_type;
+                        const calories = parseInt(session.calories_burned || 0);
+                        caloriesByActivity[activity] = (caloriesByActivity[activity] || 0) + calories;
+                      });
+                    }
+                    
+                    const totalCalories = Object.values(caloriesByActivity).reduce((sum, cal) => sum + cal, 0);
+                    
+                    return Object.entries(caloriesByActivity)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([activity, calories], index) => {
+                        const percentage = totalCalories > 0 ? ((calories / totalCalories) * 100).toFixed(1) : 0;
+                        return (
+                          <div key={activity} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-4 h-4 rounded-full" 
+                                style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                              />
+                              <span className="text-sm font-medium text-gray-700 capitalize flex items-center gap-2">
+                                {getActivityIcon(activity)}
+                                {activity.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-gray-900">{percentage}%</p>
+                              <p className="text-xs text-gray-500">{calories} kcal</p>
+                            </div>
                           </div>
-                          <span className="text-sm text-gray-600 font-semibold">
-                            {Math.round(percentage)}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                          <div
-                            className={`h-full ${getActivityColor(activity.activity_type)} transition-all duration-500 rounded-full`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between mt-1 text-xs text-gray-500">
-                          <span>{activity.total_sessions} sessions</span>
-                          <span>
-                            {parseFloat(activity.total_distance || 0).toFixed(1)} km • {Math.round(activity.total_duration)} min
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      });
+                  })()}
+                </div>
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">No activity data yet. Start logging sessions!</p>
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                <svg className="w-16 h-16 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <p className="text-sm font-medium">No activity data yet</p>
+                <p className="text-xs">Start logging sessions!</p>
+              </div>
             )}
           </div>
         </div>
 
-        {/* 30-Day Distance Trend */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">30-Day Distance Trend</h3>
-          <div className="h-48 flex items-end gap-0.5">
-            {monthlyTrend.map((day, idx) => (
-              <div
-                key={idx}
-                className="flex-1 bg-gradient-to-t from-cyan-500 to-cyan-400 rounded-t hover:from-cyan-600 hover:to-cyan-500 transition-all cursor-pointer relative group"
-                style={{
-                  height: `${(day.distance / maxMonthlyDistance) * 100}%`,
-                  minHeight: day.distance > 0 ? '4px' : '0',
-                }}
-                title={`${new Date(day.date).toLocaleDateString()}: ${day.distance.toFixed(1)} km`}
-              >
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: {day.distance.toFixed(1)} km
-                </div>
-              </div>
-            ))}
+        {/* 30-Day Distance Trend - Redesigned with Area Chart */}
+        <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900">30-Day Distance Trend</h3>
+            <p className="text-sm text-gray-500">Total distance covered daily over the last month</p>
           </div>
-          <div className="flex justify-between mt-2 text-xs text-gray-500">
-            <span>{monthlyTrend[0]?.date && new Date(monthlyTrend[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-            <span>Today</span>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+            <AreaChart 
+              data={monthlyTrend} 
+              margin={{ top: 10, right: 20, left: -10, bottom: 20 }}
+            >
+              <defs>
+                <linearGradient id="colorDistance" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.cyan} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={COLORS.cyan} stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="label"
+                tick={{ fontSize: 10, fill: '#6b7280' }}
+                axisLine={{ stroke: '#e5e7eb' }}
+                interval="preserveStartEnd"
+                minTickGap={50}
+              />
+              <YAxis 
+                tick={{ fontSize: 12, fill: '#6b7280' }}
+                axisLine={{ stroke: '#e5e7eb' }}
+                label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+              />
+              <Tooltip 
+                content={<CustomTooltip formatter={(value) => `${value.toFixed(2)} km`} />}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="distance" 
+                stroke={COLORS.cyan} 
+                strokeWidth={2.5}
+                fillOpacity={1} 
+                fill="url(#colorDistance)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="mt-4 grid grid-cols-3 gap-4 text-center pt-4 border-t border-gray-100">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Total Distance</p>
+              <p className="text-lg font-bold text-cyan-600">
+                {monthlyTrend.reduce((sum, d) => sum + d.distance, 0).toFixed(1)} km
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Daily Average</p>
+              <p className="text-lg font-bold text-cyan-600">
+                {(monthlyTrend.reduce((sum, d) => sum + d.distance, 0) / monthlyTrend.length).toFixed(2)} km
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Best Day</p>
+              <p className="text-lg font-bold text-cyan-600">
+                {Math.max(...monthlyTrend.map(d => d.distance), 0).toFixed(1)} km
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Analytics Section */}
         {sessions.length > 0 && (
           <>
-            {/* Pace Charts */}
+            {/* Shared Date Filter for Analytics Charts */}
+            <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-1">Analytics Time Period</h4>
+                  <p className="text-xs text-gray-600">Filter applies to Pace, Distance, and Calories charts</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setAnalyticsDateFilter('7days')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      analyticsDateFilter === '7days'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    📅 Last 7 Days
+                  </button>
+                  <button
+                    onClick={() => setAnalyticsDateFilter('30days')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      analyticsDateFilter === '30days'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    📆 Last 30 Days
+                  </button>
+                  <button
+                    onClick={() => setAnalyticsDateFilter('90days')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      analyticsDateFilter === '90days'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    🗓️ Last 3 Months
+                  </button>
+                  <button
+                    onClick={() => setAnalyticsDateFilter('all')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      analyticsDateFilter === 'all'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    📊 All Time
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Pace Charts - Enhanced */}
             {pacePerSession.length > 0 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Pace Per Session */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
                   <div className="mb-4">
                     <h3 className="text-lg font-bold text-gray-900">Pace Per Session</h3>
                     <p className="text-sm text-gray-600">Your pace for each workout (lower is faster)</p>
                   </div>
-                  <LineChart 
-                    data={pacePerSession} 
-                    dataKey="pace" 
-                    label="Pace (min/km)"
-                    color="blue"
-                    height={200}
-                  />
-                  <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                  
+                  {/* Activity Filter */}
+                  <div className="mb-4 flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setPaceActivityFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceActivityFilter === 'all'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      All Activities
+                    </button>
+                    <button
+                      onClick={() => setPaceActivityFilter('running')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceActivityFilter === 'running'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🏃 Running
+                    </button>
+                    <button
+                      onClick={() => setPaceActivityFilter('cycling')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceActivityFilter === 'cycling'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🚴 Cycling
+                    </button>
+                    <button
+                      onClick={() => setPaceActivityFilter('walking')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceActivityFilter === 'walking'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🚶 Walking
+                    </button>
+                  </div>
+
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart 
+                      data={(() => {
+                        const now = new Date();
+                        let filtered = paceActivityFilter === 'all' 
+                          ? pacePerSession 
+                          : pacePerSession.filter(p => p.activity === paceActivityFilter);
+                        
+                        // Apply date filter
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = filtered.filter(p => new Date(p.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = filtered.filter(p => new Date(p.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = filtered.filter(p => new Date(p.date) >= ninetyDaysAgo);
+                        }
+                        
+                        return filtered;
+                      })()} 
+                      margin={{ top: 10, right: 20, left: -10, bottom: 5 }}
+                    >
+                      <defs>
+                        <linearGradient id="paceFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={COLORS.info} stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor={COLORS.info} stopOpacity={0.05}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="label"
+                        tick={{ fontSize: 10, fill: '#6b7280' }}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        label={{ value: 'Pace (min/km)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+                        domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                      />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+                                <p className="font-semibold text-sm mb-1">{data.label}</p>
+                                <p className="text-xs">Pace: {formatPace(data.pace)}</p>
+                                <p className="text-xs capitalize">Activity: {data.activity?.replace(/_/g, ' ')}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="pace" 
+                        stroke={COLORS.info} 
+                        strokeWidth={2.5}
+                        fillOpacity={1} 
+                        fill="url(#paceFill)" 
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="pace" 
+                        stroke={COLORS.info} 
+                        strokeWidth={2.5}
+                        dot={{ fill: COLORS.info, r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="mt-6 grid grid-cols-3 gap-4 text-center pt-4 border-t border-gray-100">
                     <div>
-                      <p className="text-xs text-gray-600">Best Pace</p>
-                      <p className="text-lg font-bold text-green-600">
-                        {formatPace(Math.min(...pacePerSession.map(p => p.pace)))}
+                      <p className="text-xs text-gray-600 mb-1">Best Pace</p>
+                      <p className="text-sm font-bold text-green-600">
+                        {(() => {
+                          const now = new Date();
+                          let filtered = paceActivityFilter === 'all' 
+                            ? pacePerSession 
+                            : pacePerSession.filter(p => p.activity === paceActivityFilter);
+                          
+                          // Apply date filter
+                          if (analyticsDateFilter === '7days') {
+                            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= sevenDaysAgo);
+                          } else if (analyticsDateFilter === '30days') {
+                            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= thirtyDaysAgo);
+                          } else if (analyticsDateFilter === '90days') {
+                            const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= ninetyDaysAgo);
+                          }
+                          
+                          return filtered.length > 0
+                            ? formatPace(Math.min(...filtered.map(p => p.pace)))
+                            : 'N/A';
+                        })()}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Avg Pace</p>
-                      <p className="text-lg font-bold text-blue-600">
-                        {formatPace(pacePerSession.reduce((sum, p) => sum + p.pace, 0) / pacePerSession.length)}
+                      <p className="text-xs text-gray-600 mb-1">Avg Pace</p>
+                      <p className="text-sm font-bold text-blue-600">
+                        {(() => {
+                          const now = new Date();
+                          let filtered = paceActivityFilter === 'all' 
+                            ? pacePerSession 
+                            : pacePerSession.filter(p => p.activity === paceActivityFilter);
+                          
+                          // Apply date filter
+                          if (analyticsDateFilter === '7days') {
+                            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= sevenDaysAgo);
+                          } else if (analyticsDateFilter === '30days') {
+                            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= thirtyDaysAgo);
+                          } else if (analyticsDateFilter === '90days') {
+                            const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= ninetyDaysAgo);
+                          }
+                          
+                          return filtered.length > 0
+                            ? formatPace(filtered.reduce((sum, p) => sum + p.pace, 0) / filtered.length)
+                            : 'N/A';
+                        })()}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Sessions</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {pacePerSession.length}
+                      <p className="text-xs text-gray-600 mb-1">Sessions</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        {(() => {
+                          const now = new Date();
+                          let filtered = paceActivityFilter === 'all'
+                            ? pacePerSession
+                            : pacePerSession.filter(p => p.activity === paceActivityFilter);
+                          
+                          // Apply date filter
+                          if (analyticsDateFilter === '7days') {
+                            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= sevenDaysAgo);
+                          } else if (analyticsDateFilter === '30days') {
+                            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= thirtyDaysAgo);
+                          } else if (analyticsDateFilter === '90days') {
+                            const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                            filtered = filtered.filter(p => new Date(p.date) >= ninetyDaysAgo);
+                          }
+                          
+                          return filtered.length;
+                        })()}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Pace Improvement Trend */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="mb-4">
+                <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+                  <div className="mb-6">
                     <h3 className="text-lg font-bold text-gray-900">Pace Improvement Trend</h3>
                     <p className="text-sm text-gray-600">7-day moving average (shows overall improvement)</p>
                   </div>
-                  <LineChart 
-                    data={paceImprovement} 
-                    dataKey="pace" 
-                    label="Avg Pace (min/km)"
-                    color="green"
-                    height={200}
-                  />
-                  <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={paceImprovement} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="colorPace" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={COLORS.success} stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor={COLORS.success} stopOpacity={0.05}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="label"
+                        tick={{ fontSize: 10, fill: '#6b7280' }}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        label={{ value: 'Avg Pace (min/km)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+                        domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                      />
+                      <Tooltip 
+                        content={<CustomTooltip formatter={(value) => formatPace(value)} />}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="pace" 
+                        stroke={COLORS.success} 
+                        strokeWidth={2.5}
+                        fillOpacity={1} 
+                        fill="url(#colorPace)" 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
                     {paceImprovement.length >= 2 && (
                       <>
                         {paceImprovement[0].pace > paceImprovement[paceImprovement.length - 1].pace ? (
-                          <div className="flex items-center gap-2 text-green-700">
-                            <span className="text-2xl">📈</span>
+                          <div className="flex items-center gap-3 text-green-700">
+                            <span className="text-3xl">📈</span>
                             <div>
-                              <p className="font-semibold">Great progress!</p>
-                              <p className="text-sm">Your pace has improved by {formatPace(paceImprovement[0].pace - paceImprovement[paceImprovement.length - 1].pace)}</p>
+                              <p className="font-bold text-sm">Great progress!</p>
+                              <p className="text-xs">Your pace has improved by {formatPace(paceImprovement[0].pace - paceImprovement[paceImprovement.length - 1].pace)}</p>
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <span className="text-2xl">💪</span>
+                          <div className="flex items-center gap-3 text-gray-700">
+                            <span className="text-3xl">💪</span>
                             <div>
-                              <p className="font-semibold">Keep pushing!</p>
-                              <p className="text-sm">Consistency is key to improvement</p>
+                              <p className="font-bold text-sm">Keep pushing!</p>
+                              <p className="text-xs">Consistency is key to improvement</p>
                             </div>
                           </div>
                         )}
@@ -655,125 +1333,500 @@ const MemberCardio = () => {
               </div>
             )}
 
-            {/* Calories Charts */}
+            {/* Calories Charts - Enhanced */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Calories Per Workout */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="mb-4">
+              <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+                <div className="mb-6">
                   <h3 className="text-lg font-bold text-gray-900">Calories Burned Per Workout</h3>
                   <p className="text-sm text-gray-600">Energy expenditure for each session</p>
                 </div>
-                <BarChart 
-                  data={caloriesPerWorkout} 
-                  dataKey="calories" 
-                  labelKey="label"
-                  color="orange"
-                  height={220}
-                />
-                <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart 
+                    data={(() => {
+                      const now = new Date();
+                      let filtered = caloriesPerWorkout;
+                      
+                      if (analyticsDateFilter === '7days') {
+                        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= sevenDaysAgo);
+                      } else if (analyticsDateFilter === '30days') {
+                        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= thirtyDaysAgo);
+                      } else if (analyticsDateFilter === '90days') {
+                        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                        filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= ninetyDaysAgo);
+                      }
+                      
+                      return filtered;
+                    })()} 
+                    margin={{ top: 10, right: 20, left: -10, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="caloriesBarGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={COLORS.orange} stopOpacity={0.9}/>
+                        <stop offset="100%" stopColor={COLORS.warning} stopOpacity={0.7}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: '#6b7280' }}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                      label={{ value: 'Calories (kcal)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+                    />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+                              <p className="font-semibold text-sm mb-1">{data.label}</p>
+                              <p className="text-xs">🔥 Calories: {data.calories} kcal</p>
+                              <p className="text-xs capitalize">Activity: {data.activity?.replace(/_/g, ' ') || 'N/A'}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                      cursor={{ fill: 'rgba(249, 115, 22, 0.1)' }}
+                    />
+                    <Bar dataKey="calories" fill="url(#caloriesBarGradient)" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="mt-6 grid grid-cols-3 gap-4 text-center pt-4 border-t border-gray-100">
                   <div>
-                    <p className="text-xs text-gray-600">Highest</p>
-                    <p className="text-lg font-bold text-orange-600">
-                      {Math.max(...caloriesPerWorkout.map(c => c.calories))} kcal
+                    <p className="text-xs text-gray-600 mb-1">Highest</p>
+                    <p className="text-sm font-bold text-orange-600">
+                      {(() => {
+                        const now = new Date();
+                        let filtered = caloriesPerWorkout;
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= ninetyDaysAgo);
+                        }
+                        return filtered.length > 0 ? Math.max(...filtered.map(c => c.calories)) : 0;
+                      })()} kcal
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">Average</p>
-                    <p className="text-lg font-bold text-orange-600">
-                      {Math.round(caloriesPerWorkout.reduce((sum, c) => sum + c.calories, 0) / caloriesPerWorkout.length)} kcal
+                    <p className="text-xs text-gray-600 mb-1">Average</p>
+                    <p className="text-sm font-bold text-orange-600">
+                      {(() => {
+                        const now = new Date();
+                        let filtered = caloriesPerWorkout;
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= ninetyDaysAgo);
+                        }
+                        return filtered.length > 0 ? Math.round(filtered.reduce((sum, c) => sum + c.calories, 0) / filtered.length) : 0;
+                      })()} kcal
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">Total</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {caloriesPerWorkout.reduce((sum, c) => sum + c.calories, 0).toLocaleString()} kcal
+                    <p className="text-xs text-gray-600 mb-1">Total</p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {(() => {
+                        const now = new Date();
+                        let filtered = caloriesPerWorkout;
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = caloriesPerWorkout.filter(c => new Date(c.date) >= ninetyDaysAgo);
+                        }
+                        return filtered.reduce((sum, c) => sum + c.calories, 0).toLocaleString();
+                      })()} kcal
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Weekly Calories */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">Weekly Calories Burned</h3>
-                  <p className="text-sm text-gray-600">Total calories burned each week</p>
+              {/* Distance Per Session - NEW */}
+              <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900">Distance Per Session</h3>
+                  <p className="text-sm text-gray-600">Distance covered in each workout</p>
                 </div>
-                <BarChart 
-                  data={weeklyCalories} 
-                  dataKey="calories" 
-                  labelKey="label"
-                  color="purple"
-                  height={220}
-                />
-                <div className="mt-4 p-4 bg-purple-50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-purple-700 font-semibold">Weekly Average</p>
-                      <p className="text-2xl font-bold text-purple-900">
-                        {Math.round(weeklyCalories.reduce((sum, w) => sum + w.calories, 0) / weeklyCalories.length)} kcal
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-purple-700 font-semibold">Total Weeks</p>
-                      <p className="text-2xl font-bold text-purple-900">
-                        {weeklyCalories.length}
-                      </p>
-                    </div>
+
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart 
+                    data={(() => {
+                      const now = new Date();
+                      let filtered = distancePerSession;
+                      
+                      if (analyticsDateFilter === '7days') {
+                        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        filtered = distancePerSession.filter(d => new Date(d.date) >= sevenDaysAgo);
+                      } else if (analyticsDateFilter === '30days') {
+                        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        filtered = distancePerSession.filter(d => new Date(d.date) >= thirtyDaysAgo);
+                      } else if (analyticsDateFilter === '90days') {
+                        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                        filtered = distancePerSession.filter(d => new Date(d.date) >= ninetyDaysAgo);
+                      }
+                      
+                      return filtered;
+                    })()} 
+                    margin={{ top: 10, right: 20, left: -10, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="distanceFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={COLORS.teal} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={COLORS.teal} stopOpacity={0.05}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: '#6b7280' }}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                      label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+                    />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+                              <p className="font-semibold text-sm mb-1">{data.label}</p>
+                              <p className="text-xs">Distance: {data.distance?.toFixed(2) || 0} km</p>
+                              <p className="text-xs capitalize">Activity: {data.activity?.replace(/_/g, ' ') || 'N/A'}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="distance" 
+                      stroke={COLORS.teal} 
+                      strokeWidth={2.5}
+                      fillOpacity={1} 
+                      fill="url(#distanceFill)" 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="distance" 
+                      stroke={COLORS.teal} 
+                      strokeWidth={2.5}
+                      dot={{ fill: COLORS.teal, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="mt-6 grid grid-cols-3 gap-4 text-center pt-4 border-t border-gray-100">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Longest</p>
+                    <p className="text-sm font-bold text-teal-600">
+                      {(() => {
+                        const now = new Date();
+                        let filtered = distancePerSession;
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= ninetyDaysAgo);
+                        }
+                        return filtered.length > 0 
+                          ? Math.max(...filtered.map(d => d.distance)).toFixed(2)
+                          : '0.00';
+                      })()} km
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Average</p>
+                    <p className="text-sm font-bold text-teal-600">
+                      {(() => {
+                        const now = new Date();
+                        let filtered = distancePerSession;
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= ninetyDaysAgo);
+                        }
+                        return filtered.length > 0
+                          ? (filtered.reduce((sum, d) => sum + d.distance, 0) / filtered.length).toFixed(2)
+                          : '0.00';
+                      })()} km
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Total</p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {(() => {
+                        const now = new Date();
+                        let filtered = distancePerSession;
+                        if (analyticsDateFilter === '7days') {
+                          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= sevenDaysAgo);
+                        } else if (analyticsDateFilter === '30days') {
+                          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= thirtyDaysAgo);
+                        } else if (analyticsDateFilter === '90days') {
+                          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          filtered = distancePerSession.filter(d => new Date(d.date) >= ninetyDaysAgo);
+                        }
+                        return filtered.reduce((sum, d) => sum + d.distance, 0).toFixed(1);
+                      })()} km
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Calories by Activity Type */}
+            {/* Weekly Calories - Full Width - Modern Design */}
+            <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Weekly Calories Burned</h3>
+                <p className="text-sm text-gray-600">Total calories burned each week with trend line</p>
+              </div>
+              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                <ComposedChart 
+                  data={(() => {
+                    const now = new Date();
+                    let filtered = weeklyCalories;
+                    
+                    if (analyticsDateFilter === '7days') {
+                      filtered = weeklyCalories.slice(-1);
+                    } else if (analyticsDateFilter === '30days') {
+                      filtered = weeklyCalories.slice(-4);
+                    } else if (analyticsDateFilter === '90days') {
+                      filtered = weeklyCalories.slice(-12);
+                    }
+                    
+                    return filtered;
+                  })()} 
+                  margin={{ top: 10, right: 20, left: -10, bottom: 40 }}
+                >
+                  <defs>
+                    <linearGradient id="weeklyBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={COLORS.secondary} stopOpacity={0.95}/>
+                      <stop offset="100%" stopColor={COLORS.primary} stopOpacity={0.85}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    angle={-25}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    label={{ value: 'Calories (kcal)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
+                  />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+                            <p className="font-semibold text-sm mb-1">{data.label}</p>
+                            <p className="text-xs">🔥 Calories: {data.calories} kcal</p>
+                            <p className="text-xs">💪 Sessions: {data.sessions}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                    cursor={{ fill: 'rgba(139, 92, 246, 0.1)' }}
+                  />
+                  <Bar dataKey="calories" fill="url(#weeklyBarGradient)" radius={[12, 12, 0, 0]} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="calories" 
+                    stroke={COLORS.warning} 
+                    strokeWidth={3}
+                    dot={{ fill: COLORS.warning, r: 5, strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 7 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <div className="mt-6 flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg">
+                <div>
+                  <p className="text-xs text-purple-700 font-semibold mb-1">Weekly Average</p>
+                  <p className="text-xl font-bold text-purple-900">
+                    {(() => {
+                      const now = new Date();
+                      let filtered = weeklyCalories;
+                      if (analyticsDateFilter === '7days') {
+                        filtered = weeklyCalories.slice(-1);
+                      } else if (analyticsDateFilter === '30days') {
+                        filtered = weeklyCalories.slice(-4);
+                      } else if (analyticsDateFilter === '90days') {
+                        filtered = weeklyCalories.slice(-12);
+                      }
+                      return filtered.length > 0 
+                        ? Math.round(filtered.reduce((sum, w) => sum + w.calories, 0) / filtered.length).toLocaleString() 
+                        : '0';
+                    })()} kcal
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-purple-700 font-semibold mb-1">Best Week</p>
+                  <p className="text-xl font-bold text-purple-900">
+                    {(() => {
+                      const now = new Date();
+                      let filtered = weeklyCalories;
+                      if (analyticsDateFilter === '7days') {
+                        filtered = weeklyCalories.slice(-1);
+                      } else if (analyticsDateFilter === '30days') {
+                        filtered = weeklyCalories.slice(-4);
+                      } else if (analyticsDateFilter === '90days') {
+                        filtered = weeklyCalories.slice(-12);
+                      }
+                      return filtered.length > 0 
+                        ? Math.max(...filtered.map(w => w.calories), 0).toLocaleString() 
+                        : '0';
+                    })()} kcal
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-purple-700 font-semibold mb-1">Total Weeks</p>
+                  <p className="text-xl font-bold text-purple-900">
+                    {(() => {
+                      if (analyticsDateFilter === '7days') {
+                        return Math.min(weeklyCalories.length, 1);
+                      } else if (analyticsDateFilter === '30days') {
+                        return Math.min(weeklyCalories.length, 4);
+                      } else if (analyticsDateFilter === '90days') {
+                        return Math.min(weeklyCalories.length, 12);
+                      }
+                      return weeklyCalories.length;
+                    })()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Time Spent by Activity Type - Enhanced Pie Chart */}
             {caloriesByType.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900">Calories by Activity Type</h3>
-                  <p className="text-sm text-gray-600">Distribution of calories burned across different activities (% of total cardio calories)</p>
+                  <h3 className="text-lg font-bold text-gray-900">Time Spent by Activity Type</h3>
+                  <p className="text-sm text-gray-600">Distribution of time spent on each activity</p>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Pie Chart */}
                   <div className="flex items-center justify-center">
-                    <PieChart 
-                      data={caloriesByType} 
-                      dataKey="calories" 
-                      labelKey="activity"
-                      size={280}
-                    />
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={caloriesByType}
+                          dataKey="duration"
+                          nameKey="activity"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={100}
+                          innerRadius={60}
+                          label={({ activity, duration }) => {
+                            const total = caloriesByType.reduce((sum, item) => sum + item.duration, 0);
+                            const percent = ((duration / total) * 100).toFixed(0);
+                            return `${percent}%`;
+                          }}
+                          labelLine={false}
+                        >
+                          {caloriesByType.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              const total = caloriesByType.reduce((sum, item) => sum + item.duration, 0);
+                              const percent = ((data.duration / total) * 100).toFixed(1);
+                              return (
+                                <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl">
+                                  <p className="font-semibold text-sm capitalize mb-1">{data.activity.replace(/_/g, ' ')}</p>
+                                  <p className="text-xs">Duration: {data.duration} min ({percent}%)</p>
+                                  <p className="text-xs">Sessions: {data.sessions}</p>
+                                  <p className="text-xs">Distance: {data.distance.toFixed(1)} km</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
 
-                  {/* Horizontal Bar Chart */}
-                  <div>
-                    <BarChart 
-                      data={caloriesByType} 
-                      dataKey="calories" 
-                      labelKey="activity"
-                      color="indigo"
-                      horizontal={true}
-                    />
-                    
-                    {/* Activity Details */}
-                    <div className="mt-6 space-y-3">
-                      {caloriesByType.map((type, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900 capitalize">
-                              {type.activity.replace(/_/g, ' ')}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {type.sessions} sessions • {type.distance.toFixed(1)} km
-                            </p>
+                  {/* Activity Details List */}
+                  <div className="space-y-3">
+                    {caloriesByType.map((type, index) => {
+                      const total = caloriesByType.reduce((sum, item) => sum + item.duration, 0);
+                      const percentage = ((type.duration / total) * 100).toFixed(1);
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-100 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div 
+                              className="w-4 h-4 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                            />
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 capitalize text-sm">
+                                {type.activity.replace(/_/g, ' ')}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {type.sessions} sessions • {type.distance.toFixed(1)} km
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-indigo-600">
-                              {type.calories.toLocaleString()}
+                          <div className="text-right flex-shrink-0 ml-4">
+                            <p className="text-lg font-bold" style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}>
+                              {type.duration}
                             </p>
-                            <p className="text-xs text-gray-500">kcal</p>
+                            <p className="text-xs text-gray-500">{percentage}% • {type.duration} min</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
