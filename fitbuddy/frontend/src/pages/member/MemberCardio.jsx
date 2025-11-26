@@ -92,6 +92,7 @@ const MemberCardio = () => {
   
   // Filter states
   const [paceActivityFilter, setPaceActivityFilter] = useState('all');
+  const [paceImprovementActivityFilter, setPaceImprovementActivityFilter] = useState('all');
   const [analyticsDateFilter, setAnalyticsDateFilter] = useState('7days'); // Unified filter for pace, distance, and calories charts
 
   const [formData, setFormData] = useState({
@@ -318,6 +319,7 @@ const MemberCardio = () => {
           label: paceData[i].label,
           date: paceData[i].date,
           pace: avg,
+          activity: paceData[i].activity,
         });
       }
       setPaceImprovement(movingAvg);
@@ -933,71 +935,6 @@ const MemberCardio = () => {
           </div>
         </div>
 
-        {/* 30-Day Distance Trend - Redesigned with Area Chart */}
-        <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-gray-900">30-Day Distance Trend</h3>
-            <p className="text-sm text-gray-500">Total distance covered daily over the last month</p>
-          </div>
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <AreaChart 
-              data={monthlyTrend} 
-              margin={{ top: 10, right: 20, left: -10, bottom: 20 }}
-            >
-              <defs>
-                <linearGradient id="colorDistance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.cyan} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={COLORS.cyan} stopOpacity={0.1}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis 
-                dataKey="label"
-                tick={{ fontSize: 10, fill: '#6b7280' }}
-                axisLine={{ stroke: '#e5e7eb' }}
-                interval="preserveStartEnd"
-                minTickGap={50}
-              />
-              <YAxis 
-                tick={{ fontSize: 12, fill: '#6b7280' }}
-                axisLine={{ stroke: '#e5e7eb' }}
-                label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
-              />
-              <Tooltip 
-                content={<CustomTooltip formatter={(value) => `${value.toFixed(2)} km`} />}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="distance" 
-                stroke={COLORS.cyan} 
-                strokeWidth={2.5}
-                fillOpacity={1} 
-                fill="url(#colorDistance)" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div className="mt-4 grid grid-cols-3 gap-4 text-center pt-4 border-t border-gray-100">
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Total Distance</p>
-              <p className="text-lg font-bold text-cyan-600">
-                {monthlyTrend.reduce((sum, d) => sum + d.distance, 0).toFixed(1)} km
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Daily Average</p>
-              <p className="text-lg font-bold text-cyan-600">
-                {(monthlyTrend.reduce((sum, d) => sum + d.distance, 0) / monthlyTrend.length).toFixed(2)} km
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Best Day</p>
-              <p className="text-lg font-bold text-cyan-600">
-                {Math.max(...monthlyTrend.map(d => d.distance), 0).toFixed(1)} km
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Analytics Section */}
         {sessions.length > 0 && (
           <>
@@ -1268,67 +1205,211 @@ const MemberCardio = () => {
 
                 {/* Pace Improvement Trend */}
                 <div className={`${CARD_CLASS} ${CARD_PADDING}`}>
-                  <div className="mb-6">
+                  <div className="mb-4">
                     <h3 className="text-lg font-bold text-gray-900">Pace Improvement Trend</h3>
-                    <p className="text-sm text-gray-600">7-day moving average (shows overall improvement)</p>
+                    <p className="text-sm text-gray-600">7-day moving average showing your pace progression</p>
                   </div>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <LineChart data={paceImprovement} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="colorPace" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={COLORS.success} stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor={COLORS.success} stopOpacity={0.05}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="label"
-                        tick={{ fontSize: 10, fill: '#6b7280' }}
-                        axisLine={{ stroke: '#e5e7eb' }}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 12, fill: '#6b7280' }}
-                        axisLine={{ stroke: '#e5e7eb' }}
-                        label={{ value: 'Avg Pace (min/km)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#6b7280' } }}
-                        domain={['dataMin - 0.5', 'dataMax + 0.5']}
-                      />
-                      <Tooltip 
-                        content={<CustomTooltip formatter={(value) => formatPace(value)} />}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="pace" 
-                        stroke={COLORS.success} 
-                        strokeWidth={2.5}
-                        fillOpacity={1} 
-                        fill="url(#colorPace)" 
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                  <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
-                    {paceImprovement.length >= 2 && (
+                  
+                  {/* Activity Filter */}
+                  <div className="mb-4 flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setPaceImprovementActivityFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceImprovementActivityFilter === 'all'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      All Activities
+                    </button>
+                    <button
+                      onClick={() => setPaceImprovementActivityFilter('running')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceImprovementActivityFilter === 'running'
+                          ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🏃 Running
+                    </button>
+                    <button
+                      onClick={() => setPaceImprovementActivityFilter('cycling')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceImprovementActivityFilter === 'cycling'
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🚴 Cycling
+                    </button>
+                    <button
+                      onClick={() => setPaceImprovementActivityFilter('walking')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paceImprovementActivityFilter === 'walking'
+                          ? 'bg-gradient-to-r from-green-500 to-teal-500 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🚶 Walking
+                    </button>
+                  </div>
+                  
+                  {(() => {
+                    const now = new Date();
+                    let filtered = paceImprovement;
+                    
+                    // Apply activity filter first
+                    if (paceImprovementActivityFilter !== 'all') {
+                      filtered = filtered.filter(p => p.activity === paceImprovementActivityFilter);
+                    }
+                    
+                    // Apply date filter
+                    if (analyticsDateFilter === '7days') {
+                      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                      filtered = filtered.filter(p => new Date(p.date) >= sevenDaysAgo);
+                    } else if (analyticsDateFilter === '30days') {
+                      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                      filtered = filtered.filter(p => new Date(p.date) >= thirtyDaysAgo);
+                    } else if (analyticsDateFilter === '90days') {
+                      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                      filtered = filtered.filter(p => new Date(p.date) >= ninetyDaysAgo);
+                    }
+                    
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                          <svg className="w-16 h-16 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          <p className="text-sm font-medium">Not enough pace data</p>
+                          <p className="text-xs">Complete more workouts with distance tracking</p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
                       <>
-                        {paceImprovement[0].pace > paceImprovement[paceImprovement.length - 1].pace ? (
-                          <div className="flex items-center gap-3 text-green-700">
-                            <span className="text-3xl">📈</span>
-                            <div>
-                              <p className="font-bold text-sm">Great progress!</p>
-                              <p className="text-xs">Your pace has improved by {formatPace(paceImprovement[0].pace - paceImprovement[paceImprovement.length - 1].pace)}</p>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <LineChart 
+                            data={filtered}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorPaceImprovement" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0.05}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                            <XAxis 
+                              dataKey="label"
+                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }}
+                              axisLine={{ stroke: '#d1d5db' }}
+                              tickLine={{ stroke: '#d1d5db' }}
+                              interval="preserveStartEnd"
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }}
+                              axisLine={{ stroke: '#d1d5db' }}
+                              tickLine={{ stroke: '#d1d5db' }}
+                              tickFormatter={(value) => value.toFixed(2)}
+                              label={{ 
+                                value: 'Pace (min/km)', 
+                                angle: -90, 
+                                position: 'insideLeft', 
+                                style: { fontSize: 12, fill: '#6b7280', fontWeight: 600 } 
+                              }}
+                              domain={['dataMin - 0.2', 'dataMax + 0.2']}
+                            />
+                            <Tooltip 
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const data = payload[0].payload;
+                                  return (
+                                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white px-4 py-3 rounded-xl shadow-2xl border border-gray-700">
+                                      <p className="font-semibold text-sm mb-2">{data.label}</p>
+                                      <p className="text-xs mb-1 flex items-center gap-2">
+                                        <span className="text-green-400">⏱️</span>
+                                        <span>Pace: <span className="font-bold">{formatPace(data.pace)}</span></span>
+                                      </p>
+                                      {data.activity && (
+                                        <p className="text-xs text-gray-400 capitalize flex items-center gap-1">
+                                          {data.activity === 'running' && '🏃'}
+                                          {data.activity === 'cycling' && '🚴'}
+                                          {data.activity === 'walking' && '🚶'}
+                                          {data.activity.replace(/_/g, ' ')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="pace" 
+                              stroke="#10b981" 
+                              strokeWidth={3}
+                              fillOpacity={1} 
+                              fill="url(#colorPaceImprovement)" 
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="pace" 
+                              stroke="#10b981" 
+                              strokeWidth={3}
+                              dot={{ fill: '#10b981', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                              activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff' }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                        <div className="mt-6 p-5 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-xl border border-green-100">
+                          {filtered.length >= 2 ? (
+                            <>
+                              {filtered[0].pace > filtered[filtered.length - 1].pace ? (
+                                <div className="flex items-center gap-4 text-green-700">
+                                  <div className="text-4xl">📈</div>
+                                  <div className="flex-1">
+                                    <p className="font-bold text-base mb-1">Excellent progress!</p>
+                                    <p className="text-sm mb-1">Your pace improved by <span className="font-bold text-green-600">{formatPace(filtered[0].pace - filtered[filtered.length - 1].pace)}</span></p>
+                                    <p className="text-xs text-gray-600">
+                                      📊 {filtered.length} data points
+                                      {paceImprovementActivityFilter !== 'all' && (
+                                        <span className="ml-2 capitalize">• {paceImprovementActivityFilter} only</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-4 text-gray-700">
+                                  <div className="text-4xl">💪</div>
+                                  <div className="flex-1">
+                                    <p className="font-bold text-base mb-1">Keep pushing!</p>
+                                    <p className="text-sm mb-1">Consistency is the key to improvement</p>
+                                    <p className="text-xs text-gray-600">
+                                      📊 {filtered.length} data points
+                                      {paceImprovementActivityFilter !== 'all' && (
+                                        <span className="ml-2 capitalize">• {paceImprovementActivityFilter} only</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-4 text-gray-700">
+                              <div className="text-4xl">🏃</div>
+                              <div>
+                                <p className="font-bold text-base mb-1">Getting started!</p>
+                                <p className="text-sm">Complete more sessions to see your improvement trend</p>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 text-gray-700">
-                            <span className="text-3xl">💪</span>
-                            <div>
-                              <p className="font-bold text-sm">Keep pushing!</p>
-                              <p className="text-xs">Consistency is key to improvement</p>
-                            </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
