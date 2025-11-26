@@ -17,8 +17,9 @@
  */
 
 import express from 'express';
-import { query, getClient } from '../config/db.js';
+import { query } from '../config/db.js';
 import requireAuth from '../middleware/requireAuth.js';
+import { getUserProfile } from '../db/users.js';
 
 const router = express.Router();
 
@@ -129,10 +130,19 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // Calorie calculation: Calories = MET × Weight(kg) × Duration(hours)
-    // Using average adult weight of 70kg (can be personalized later)
-    const assumedWeightKg = 70;
+    // Fetch user's actual weight from profile, default to 70kg if not available
+    let userWeight = 70; // Default
+    try {
+      const userProfile = await getUserProfile(userId);
+      if (userProfile && userProfile.weight_kg) {
+        userWeight = parseFloat(userProfile.weight_kg);
+      }
+    } catch (error) {
+      console.log('Could not fetch user weight, using default 70kg:', error.message);
+    }
+    
     const durationHours = durationMinutes / 60;
-    const caloriesBurned = Math.round(metValue * assumedWeightKg * durationHours);
+    const caloriesBurned = Math.round(metValue * userWeight * durationHours);
 
     const result = await query(
       `INSERT INTO cardio_sessions 
@@ -413,9 +423,19 @@ router.put('/:id', requireAuth, async (req, res) => {
         else metValue = 14.5;
       }
 
-      const assumedWeightKg = 70;
+      // Fetch user's actual weight from profile, default to 70kg if not available
+      let userWeight = 70; // Default
+      try {
+        const userProfile = await getUserProfile(userId);
+        if (userProfile && userProfile.weight_kg) {
+          userWeight = parseFloat(userProfile.weight_kg);
+        }
+      } catch (error) {
+        console.log('Could not fetch user weight, using default 70kg:', error.message);
+      }
+      
       const durationHours = durationMinutes / 60;
-      caloriesBurned = Math.round(metValue * assumedWeightKg * durationHours);
+      caloriesBurned = Math.round(metValue * userWeight * durationHours);
     }
 
     const result = await query(
