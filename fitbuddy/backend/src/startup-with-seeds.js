@@ -132,9 +132,8 @@ async function startup() {
   console.log('🚀 Starting FitBuddy with auto-seeding...\n');
   
   // Start the main server in the background
-  const serverProcess = spawn('npm', ['run', 'dev'], {
-    stdio: 'inherit',
-    shell: true
+  const serverProcess = spawn('node', ['src/index.js'], {
+    stdio: 'inherit'
   });
   
   // Wait for server to be ready
