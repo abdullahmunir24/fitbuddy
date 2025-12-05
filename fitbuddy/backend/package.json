@@ -10,6 +10,7 @@
     "start-with-seeds": "node src/startup-with-seeds.js",
     "seed-user": "node src/seed-default-user.js",
     "seed-gyms": "node src/seed-gyms.js",
+    "seed-classes": "node src/seed-classes.js",
     "seed-workouts": "node src/seed-workouts.js",
     "seed-cardio": "node src/seed-cardio.js"
   },
