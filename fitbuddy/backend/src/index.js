@@ -72,7 +72,12 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
  * TODO: Consider using a CORS whitelist for multiple frontend domains
  */
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://fitbuddy-one.vercel.app',
+    FRONTEND_URL
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
