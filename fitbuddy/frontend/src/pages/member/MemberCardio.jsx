@@ -71,6 +71,7 @@ const CustomTooltip = ({ active, payload, label, formatter }) => {
 
 const MemberCardio = () => {
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const [sessions, setSessions] = useState([]);
   const [allSessions, setAllSessions] = useState([]); // Store all sessions for filtering
   const [stats, setStats] = useState(null);
@@ -171,7 +172,7 @@ const MemberCardio = () => {
     try {
       const token = localStorage.getItem('token');
       // Fetch ALL sessions (limit=1000 to get all data)
-      const response = await fetch(`http://localhost:3001/api/cardio?limit=1000`, {
+      const response = await fetch(`${API_URL}/api/cardio?limit=1000`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -191,7 +192,7 @@ const MemberCardio = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/cardio/stats?period=${period}`, {
+      const response = await fetch(`${API_URL}/api/cardio/stats?period=${period}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -403,8 +404,8 @@ const MemberCardio = () => {
     try {
       const token = localStorage.getItem('token');
       const url = editingSession
-        ? `http://localhost:3001/api/cardio/${editingSession.id}`
-        : 'http://localhost:3001/api/cardio';
+        ? `${API_URL}/api/cardio/${editingSession.id}`
+        : `${API_URL}/api/cardio`;
       const method = editingSession ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -433,7 +434,7 @@ const MemberCardio = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/cardio/${id}`, {
+      const response = await fetch(`${API_URL}/api/cardio/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

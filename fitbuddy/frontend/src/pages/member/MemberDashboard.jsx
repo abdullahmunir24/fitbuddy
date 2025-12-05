@@ -108,7 +108,8 @@ const MemberDashboard = () => {
         if (!token) return;
 
         // Fetch workouts
-        const workoutsResponse = await fetch('http://localhost:3001/api/workouts', {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const workoutsResponse = await fetch(`${apiUrl}/api/workouts`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

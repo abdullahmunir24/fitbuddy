@@ -52,7 +52,8 @@ const MemberProfile = () => {
       try {
         setStatsLoading(true);
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3001/api/cardio?limit=1000', {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiUrl}/api/cardio?limit=1000`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -87,7 +88,8 @@ const MemberProfile = () => {
         
         if (!userId) return;
         
-        const response = await fetch(`http://localhost:3001/api/users/${userId}/profile`, {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiUrl}/api/users/${userId}/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -161,7 +163,8 @@ const MemberProfile = () => {
       const userId = currentUser?.id;
       
       // Update user profile via API
-      const response = await fetch(`http://localhost:3001/api/users/${userId}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +181,8 @@ const MemberProfile = () => {
         const result = await response.json();
         
         // Update user_profiles with height, weight
-        const profileResponse = await fetch(`http://localhost:3001/api/users/${userId}/profile`, {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const profileResponse = await fetch(`${apiUrl}/api/users/${userId}/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

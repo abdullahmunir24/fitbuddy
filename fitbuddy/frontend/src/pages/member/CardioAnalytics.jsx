@@ -24,7 +24,8 @@ const CardioAnalytics = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/cardio?period=${period}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/cardio?period=${period}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
