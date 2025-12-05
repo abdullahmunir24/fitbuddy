@@ -14,6 +14,8 @@ import { spawn } from 'child_process';
 import { Pool } from 'pg';
 
 const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Fallback to individual env vars if DATABASE_URL is not set
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'fitbuddy_db',
@@ -82,6 +84,50 @@ async function hasCardioSessions() {
 }
 
 /**
+ * Seed gyms
+ */
+async function seedGyms() {
+  return new Promise((resolve, reject) => {
+    console.log('🏢 Seeding gym data...\n');
+    
+    const seedProcess = spawn('npm', ['run', 'seed-gyms'], {
+      stdio: 'inherit',
+      shell: true
+    });
+    
+    seedProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Gym seed process exited with code ${code}`));
+      }
+    });
+  });
+}
+
+/**
+ * Seed classes
+ */
+async function seedClasses() {
+  return new Promise((resolve, reject) => {
+    console.log('📚 Seeding class data...\n');
+    
+    const seedProcess = spawn('npm', ['run', 'seed-classes'], {
+      stdio: 'inherit',
+      shell: true
+    });
+    
+    seedProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Class seed process exited with code ${code}`));
+      }
+    });
+  });
+}
+
+/**
  * Seed workouts for member@gmail.com
  */
 async function seedWorkouts() {
@@ -143,6 +189,22 @@ async function startup() {
   if (!serverReady) {
     console.error('❌ Server startup failed');
     process.exit(1);
+  }
+  
+  // Seed gyms
+  try {
+    await seedGyms();
+    console.log('\n✅ Gym seeding completed!\n');
+  } catch (error) {
+    console.error('❌ Gym seeding failed:', error.message);
+  }
+  
+  // Seed classes
+  try {
+    await seedClasses();
+    console.log('\n✅ Class seeding completed!\n');
+  } catch (error) {
+    console.error('❌ Class seeding failed:', error.message);
   }
   
   // Check if workouts already exist
